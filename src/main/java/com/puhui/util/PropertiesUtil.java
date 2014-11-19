@@ -1,4 +1,4 @@
-package com.amos.tool;
+package com.puhui.util;
 
 import java.io.IOException;
 import java.io.InputStream;

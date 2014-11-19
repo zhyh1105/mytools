@@ -15,7 +15,6 @@ import javax.mail.search.SubjectTerm;
 
 import org.apache.commons.lang3.StringUtils;
 
-import com.amos.tool.PropertiesUtil;
 import com.puhui.util.mail.MailAuthenticator;
 
 public class MailReceiver {
