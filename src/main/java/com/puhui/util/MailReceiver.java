@@ -1,153 +1,103 @@
 package com.puhui.util;
 
+import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.util.Calendar;
 import java.util.Properties;
 
-import javax.mail.BodyPart;
 import javax.mail.Folder;
 import javax.mail.Message;
 import javax.mail.MessagingException;
 import javax.mail.Multipart;
+import javax.mail.Part;
 import javax.mail.Session;
 import javax.mail.Store;
+import javax.mail.internet.AddressException;
+import javax.mail.internet.InternetAddress;
+import javax.mail.search.AndTerm;
+import javax.mail.search.ComparisonTerm;
+import javax.mail.search.FromTerm;
 import javax.mail.search.SearchTerm;
+import javax.mail.search.SentDateTerm;
 import javax.mail.search.SubjectTerm;
 
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.io.FileUtils;
 
 import com.puhui.util.mail.MailAuthenticator;
 
 public class MailReceiver {
     private static final String PROTOCOL = "pop3";
     private static final String INBOX = "INBOX";
-    private static final String CONTENT_TYPE_MULTIPART_MIXED = "multipart/mixed";
-    private static final String CONTENT_TYPE_MULTIPART_MULTIPART_RELATED = "multipart/related";
-    private static final String CONTENT_TYPE_MULTIPART_MULTIPART_ALTERNATIVE = "multipart/alternative";
-    private static final String CONTENT_TYPE_TEXT_PLAIN = "text/plain";
     private static final String CONTENT_TYPE_TEXT_HTML = "text/html";
 
     public static void main(String args[]) throws Exception {
-        String username = "584440082@qq.com";
-        String password = "puhuijinrong17";
+        String username = "5844400892@qq.com";
+        String password = "abcdefg";
+        receiveMail(username, password);
+    }
+
+    public static void receiveMail(String username, String password) throws Exception {
         Session session = createSession(PropertiesUtil.getPropsByEmail(username), username, password);
         Store store = session.getStore(PROTOCOL);
         store.connect();
         Folder folder = store.getFolder(INBOX);
         folder.open(Folder.READ_ONLY);
-        // SearchTerm searchTerm = new AndTerm(new FromStringTerm("@amazon.cn"),
-        // new SubjectTerm("已经发货"));
-        SearchTerm searchTerm = new SubjectTerm("银行");
-        Message[] msgs = folder.search(searchTerm);
-        int i = 0;
+        Message[] msgs = folder.search(makeSearchTerm());
+        // Message[] msgs = folder.getMessages();
         for (Message msg : msgs) {
-            System.out.println(msg.getContentType());
-            String subject = msg.getSubject();
-            String from = msg.getFrom()[0].toString();
-            // String msgContent = processMsg(msg);
-            System.out.printf("%d\n\t%s\n\t\t%s\n", i, from, subject);
-            // File file = new File("D:\\tmp\\mail", i + ".html");
-            // FileUtils.write(file, from);
-            // FileUtils.write(file, "\n\r", true);
-            // FileUtils.write(file, subject, true);
-            // FileUtils.write(file, "\n\r", true);
-            // FileUtils.write(file, msgContent, true);
-            ++i;
+            String msgContent = dumpPart(msg);
+            File file = new File("D:\\tmp\\hotmail", System.currentTimeMillis() + ".html");
+            FileUtils.write(file, msgContent, true);
         }
         folder.close(true);
         store.close();
     }
 
-    public static String processMsg(Message msg) throws MessagingException, IOException {
-        String contentType = msg.getContentType();
-        if (contentType != null) {
-            contentType = contentType.toLowerCase();
-            if (contentType.contains(CONTENT_TYPE_TEXT_HTML) || contentType.contains(CONTENT_TYPE_TEXT_PLAIN)) {
-                return msg.getContent().toString();
-            } else if (contentType.contains(CONTENT_TYPE_MULTIPART_MIXED)) {
-                return processMultipartMixed((Multipart) msg.getContent());
-            } else if (contentType.contains(CONTENT_TYPE_MULTIPART_MULTIPART_RELATED)) {
-                return processMultipartRelated((Multipart) msg.getContent());
-            } else if (contentType.contains(CONTENT_TYPE_MULTIPART_MULTIPART_ALTERNATIVE)) {
-                return processMultipartAlternative((Multipart) msg.getContent());
-            }
-        }
-        return msg.getContent().toString();
+    private static SearchTerm makeSearchTerm() throws AddressException {
+        FromTerm fromTerm = new FromTerm(new InternetAddress("ccsvc@message.cmbchina.com"));
+        SubjectTerm subjectTerm = new SubjectTerm("招商银行信用卡电子账单");
+        Calendar calendar = Calendar.getInstance();
+        calendar.set(Calendar.MONTH, calendar.get(Calendar.MONTH) - 2);
+        calendar.set(Calendar.DAY_OF_MONTH, calendar.get(Calendar.DAY_OF_MONTH) - 2);
+        SearchTerm fromAndSubject = new AndTerm(fromTerm, subjectTerm);
+        SentDateTerm sentDateTerm = new SentDateTerm(ComparisonTerm.GE, calendar.getTime());
+        SearchTerm searchTerm = new AndTerm(sentDateTerm, fromAndSubject);
+        // SearchTerm searchTerm = new SubjectTerm("银行");
+        return searchTerm;
     }
 
     /**
-     * 处理multipart/mixed
+     * 提取html
      * 
-     * @author zhuyuhang
-     * @param part
-     * @throws IOException
-     * @throws MessagingException
+     * @param p
+     * @return
+     * @throws Exception
      */
-    public static String processMultipartMixed(Multipart part) throws MessagingException, IOException {
-        for (int i = 0; i < part.getCount(); i++) {
-            BodyPart bp = part.getBodyPart(i);
-            String contentType = bp.getContentType();
-            if (StringUtils.isNotBlank(contentType)) {
-                if (contentType.contains(CONTENT_TYPE_MULTIPART_MULTIPART_RELATED)) {
-                    return processMultipartRelated((Multipart) bp.getContent());
-                } else if (contentType.contains(CONTENT_TYPE_MULTIPART_MULTIPART_ALTERNATIVE)) {
-                    return processMultipartAlternative((Multipart) bp.getContent());
-                } else if (contentType.contains(CONTENT_TYPE_TEXT_HTML)) {
-                    return bp.getContent().toString();
-                } else if (contentType.contains(CONTENT_TYPE_TEXT_PLAIN)) {// 纯文本的内容我们不需要　
+    public static String dumpPart(Part p) throws Exception {
+        String contentType = p.getContentType();
+        Object o = p.getContent();
+        if (o instanceof String) {// 这是纯文本
+            if (contentType.contains(CONTENT_TYPE_TEXT_HTML)) {
+                return (String) o;
+            }
+        } else if (o instanceof Multipart) {// 这是混合部分
+            Multipart mp = (Multipart) o;
+            int count = mp.getCount();
+            for (int i = 0; i < count; i++) {
+                String result = dumpPart(mp.getBodyPart(i));
+                if (result != null) {
+                    return result;
                 }
             }
+        } else if (o instanceof InputStream) {// 那么这就是附件了
         }
         return null;
     }
 
-    /**
-     * 处理multipart/related
-     * 
-     * @author zhuyuhang
-     * @param part
-     * @throws IOException
-     * @throws MessagingException
-     */
-    public static String processMultipartRelated(Multipart part) throws MessagingException, IOException {
-        for (int i = 0; i < part.getCount(); i++) {
-            BodyPart bp = part.getBodyPart(i);
-            String contentType = bp.getContentType();
-            if (StringUtils.isNotBlank(contentType)) {
-                if (contentType.contains(CONTENT_TYPE_MULTIPART_MULTIPART_ALTERNATIVE)) {// 这里我们只处理html
-                    return processMultipartAlternative((Multipart) bp.getContent());
-                } else if (contentType.contains(CONTENT_TYPE_TEXT_HTML)) {
-                    return bp.getContent().toString();
-                } else if (contentType.contains(CONTENT_TYPE_TEXT_PLAIN)) {// 纯文本的内容我们不需要　
-                }
-            }
-        }
-        return null;
-    }
-
-    /**
-     * 处理multipart/alternative
-     * 
-     * @author zhuyuhang
-     * @param part
-     * @throws MessagingException
-     * @throws IOException
-     */
-    public static String processMultipartAlternative(Multipart part) throws MessagingException, IOException {
-        for (int i = 0; i < part.getCount(); i++) {
-            BodyPart bp = part.getBodyPart(i);
-            String contentType = bp.getContentType();
-            if (StringUtils.isNotBlank(contentType)) {
-                if (contentType.contains(CONTENT_TYPE_TEXT_HTML)) {// 这里我们只处理html
-                    return bp.getContent().toString();
-                } else if (contentType.contains(CONTENT_TYPE_TEXT_PLAIN)) {// 纯文本的内容我们不需要　
-                }
-            }
-        }
-        return null;
-    }
-
-    public static String processTextHtml(BodyPart part) throws MessagingException, IOException {
-        return part.getContent().toString();
+    private static String processTextHtml(Part p) throws MessagingException, IOException {
+        // TODO 是否转码
+        return (String) p.getContent();
     }
 
     public static Session createSession(Properties properties, String username, String password) {
