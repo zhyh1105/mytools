@@ -128,6 +128,37 @@ public class DateUtils {
         return df;
     }
 
+    /**
+     * 获取给定日期的前几个月
+     * 
+     * @author zhuyuhang
+     * @param value
+     * @return
+     */
+    public static Date someMonthAgo(int value) {
+        return someMonthAgo(Calendar.getInstance().getTime(), value);
+    }
+
+    /**
+     * 获取给定日期的前几个月
+     * 
+     * @author zhuyuhang
+     * @param date
+     * @param value
+     * @return
+     */
+    public static Date someMonthAgo(Date date, int value) {
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTime(date);
+        calendar.set(Calendar.MONTH, calendar.get(Calendar.MONTH) - value);
+        calendar.set(Calendar.HOUR, 0);
+        calendar.set(Calendar.MINUTE, 0);
+        calendar.set(Calendar.SECOND, 0);
+        calendar.set(Calendar.MILLISECOND, 0);
+        calendar.set(Calendar.AM_PM, Calendar.AM);
+        return calendar.getTime();
+    }
+
     public static void main(String[] args) {
         for (int i = 1; i < 14; i++) {
             System.out.println(modifyToLastDayOfMonth(addMonths(new Date(), -i)));

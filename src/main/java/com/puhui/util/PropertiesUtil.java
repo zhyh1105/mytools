@@ -70,7 +70,13 @@ public class PropertiesUtil {
         return null;
     }
 
+    private static final Properties DEFAULT_PROPS = readPropertiesFile("/client_spconf.properties");
+
+    public static String getProps(String key) {
+        return DEFAULT_PROPS.getProperty(key);
+    }
+
     public static void main(String[] args) {
-        System.out.println(getPropsByEmail("410398699@qq.com").getProperty("mail.pop3.host"));
+        System.out.println(getProps("mail.subject"));
     }
 }
