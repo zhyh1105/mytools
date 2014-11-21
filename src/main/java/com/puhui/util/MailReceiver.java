@@ -17,18 +17,24 @@ import javax.mail.Session;
 import javax.mail.Store;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.log4j.Logger;
 
 import com.puhui.util.mail.MailAuthenticator;
 
 public class MailReceiver {
-    public static final String PROTOCOL = "pop3";
-    public static final String INBOX = "INBOX";
-    private static final String CONTENT_TYPE_TEXT_HTML = "text/html";
-    private static final String MAIL_FORM_REGEX = PropertiesUtil.getProps("mail.from");
-    private static final String MAIL_SUBJECT_REGEX = PropertiesUtil.getProps("mail.subject");
-    private static final Pattern MAIL_FORM_PATTER = Pattern.compile(MAIL_FORM_REGEX);
-    private static final Pattern MAIL_SUBJECT_PATTER = Pattern.compile(MAIL_SUBJECT_REGEX);
-    private static final String BANK_BILLS_DIR = PropertiesUtil.getProps("bank_bills_dir");
+    private Logger logger = Logger.getLogger(MailReceiver.class);
+    public final String PROTOCOL = "pop3";
+    public final String INBOX = "INBOX";
+    private final String CONTENT_TYPE_TEXT_HTML = "text/html";
+    private final String MAIL_FORM_REGEX = PropertiesUtil.getProps("mail.from");
+    private final String MAIL_SUBJECT_REGEX = PropertiesUtil.getProps("mail.subject");
+    private final Pattern MAIL_FORM_PATTER = Pattern.compile(MAIL_FORM_REGEX);
+    private final Pattern MAIL_SUBJECT_PATTER = Pattern.compile(MAIL_SUBJECT_REGEX);
+    private final String BANK_BILLS_DIR = PropertiesUtil.getProps("bank_bills_dir");
+
+    public MailReceiver(String username, String password) throws Exception {
+        this.receiveMail(username, password);
+    }
 
     /**
      * 获取最近两个月的符合条件的邮件
@@ -40,7 +46,7 @@ public class MailReceiver {
      *            邮箱密码
      * @throws Exception
      */
-    public static void receiveMail(String username, String password) throws Exception {
+    public void receiveMail(String username, String password) throws Exception {
         receiveMail(username, password, 2);
     }
 
@@ -56,7 +62,7 @@ public class MailReceiver {
      *            前几个月
      * @throws Exception
      */
-    public static void receiveMail(String username, String password, int monthAgo) throws Exception {
+    public void receiveMail(String username, String password, int monthAgo) throws Exception {
         Session session = createSession(PropertiesUtil.getPropsByEmail(username), username, password);
         Store store = session.getStore(PROTOCOL);
         store.connect();
@@ -69,13 +75,14 @@ public class MailReceiver {
             try {
                 Message msg = folder.getMessage(i);
                 Date sendDate = msg.getSentDate();
+                logger.debug(DateUtils.formatDate(sendDate, "yyyy-MM-dd HH:mm:ss"));
                 if (sendDate.after(date)) {
                     processMsg(msgs[i]);
                 } else {
                     break;
                 }
             } catch (Exception e) {
-                e.printStackTrace();
+                logger.error(e.getMessage(), e);
             }
         }
         folder.close(true);
@@ -89,7 +96,7 @@ public class MailReceiver {
      * @param msg
      * @throws Exception
      */
-    private static void processMsg(Message msg) throws Exception {
+    private void processMsg(Message msg) throws Exception {
         Address[] address = msg.getFrom();
         if (address == null || address.length == 0) {
             return;
@@ -110,7 +117,7 @@ public class MailReceiver {
      * @return
      * @throws Exception
      */
-    public static String dumpPart(Part p) throws Exception {
+    public String dumpPart(Part p) throws Exception {
         String contentType = p.getContentType();
         Object o = p.getContent();
         if (o instanceof String) {// 这是纯文本
@@ -131,12 +138,12 @@ public class MailReceiver {
         return null;
     }
 
-    private static String processTextHtml(Part p) throws MessagingException, IOException {
+    private String processTextHtml(Part p) throws MessagingException, IOException {
         // TODO 是否转码
         return (String) p.getContent();
     }
 
-    public static Session createSession(Properties properties, String username, String password) {
+    public Session createSession(Properties properties, String username, String password) {
         properties.put("rsetbeforequit", true);
         properties.put("mail.pop3.ssl.trust", "*");
         Session session = Session.getDefaultInstance(properties, new MailAuthenticator(username, password));
