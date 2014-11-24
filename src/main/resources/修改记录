@@ -1,0 +1,12 @@
+报异常，修改了如下文件
+java.security.cert.CertificateException: Certificates does not conform to algorithm constraints
+
+Googling I found the answer. In attempt to tighten security the Java team intentionally is disabling MD2 and RSA algorithms in latest Java releases which breaks the TiVo RPC authentication scheme. To re-enable you can edit:c:\Program Files (x86)\Java\jre7\lib\security\java.security
+
+Then look for this line:
+jdk.certpath.disabledAlgorithms=MD2, RSA keySize < 1024
+
+comment it out like this:
+#jdk.certpath.disabledAlgorithms=MD2, RSA keySize < 1024
+
+问题完美解决 就是这儿 java太强大了。

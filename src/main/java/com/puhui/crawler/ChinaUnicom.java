@@ -98,7 +98,7 @@ public class ChinaUnicom {
         try {
             CloseableHttpResponse response = client.execute(httppost);
             String resp = EntityUtils.toString(response.getEntity());
-            FileUtils.write(new File(TMP_FILE), resp, Charset.forName(HttpUtils.DEFAULT_ENCODING), false);
+            FileUtils.write(new File(TMP_FILE), resp, Charset.forName(HttpUtils.UTF_8), false);
             response.close();
         } catch (Exception e) {
             e.printStackTrace();
@@ -148,7 +148,7 @@ public class ChinaUnicom {
             CloseableHttpResponse response = client.execute(httppost);
             // TODO 历史账单
             String resp = EntityUtils.toString(response.getEntity());
-            FileUtils.write(new File(TMP_FILE), resp, Charset.forName(HttpUtils.DEFAULT_ENCODING), true);
+            FileUtils.write(new File(TMP_FILE), resp, Charset.forName(HttpUtils.UTF_8), true);
             response.close();
         } catch (Exception e) {
             e.printStackTrace();
@@ -227,7 +227,7 @@ public class ChinaUnicom {
                         JSONArray result = pageMap.getJSONArray(Messages
                                 .getString("ChinaUnicom.callDetail.result.pageMap.result"));
                         FileUtils.write(new File(TMP_FILE), result.toString(),
-                                Charset.forName(HttpUtils.DEFAULT_ENCODING), true);
+                                Charset.forName(HttpUtils.UTF_8), true);
                         callDetail(client, date, ++pageNo, totalPages);
                     }
                 }
@@ -307,7 +307,7 @@ public class ChinaUnicom {
                         JSONArray result = pageMap.getJSONArray(Messages
                                 .getString("ChinaUnicom.sms.result.pageMap.result"));
                         FileUtils.write(new File(TMP_FILE), result.toString(),
-                                Charset.forName(HttpUtils.DEFAULT_ENCODING), true);
+                                Charset.forName(HttpUtils.UTF_8), true);
                         sms(client, date, ++pageNo, totalPages);
                     }
                 }
@@ -406,7 +406,7 @@ public class ChinaUnicom {
                         JSONArray result = pageMap.getJSONArray(Messages
                                 .getString("ChinaUnicom.callValueAdded.result.pageMap.result"));
                         FileUtils.write(new File(TMP_FILE), result.toString(),
-                                Charset.forName(HttpUtils.DEFAULT_ENCODING), true);
+                                Charset.forName(HttpUtils.UTF_8), true);
                         callValueAdded(client, date, ++pageNo, totalPages);
                     }
                 }
@@ -440,7 +440,7 @@ public class ChinaUnicom {
             CloseableHttpResponse response = client.execute(httppost);
             // TODO 官网没有内容 不知道如何解析
             String resp = (EntityUtils.toString(response.getEntity()));
-            FileUtils.write(new File(TMP_FILE), resp, Charset.forName(HttpUtils.DEFAULT_ENCODING), true);
+            FileUtils.write(new File(TMP_FILE), resp, Charset.forName(HttpUtils.UTF_8), true);
             response.close();
         } catch (Exception e) {
             e.printStackTrace();
@@ -516,7 +516,7 @@ public class ChinaUnicom {
                         JSONArray result = pageMap.getJSONArray(Messages
                                 .getString("ChinaUnicom.callNetPlayRecord.result.pageMap.result"));
                         FileUtils.write(new File(TMP_FILE), result.toString(),
-                                Charset.forName(HttpUtils.DEFAULT_ENCODING), true);
+                                Charset.forName(HttpUtils.UTF_8), true);
                         callNetPlayRecord(client, date, ++pageNo, totalPages);
                     }
                 }
