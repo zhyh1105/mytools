@@ -8,5 +8,6 @@ jdk.certpath.disabledAlgorithms=MD2, RSA keySize < 1024
 
 comment it out like this:
 #jdk.certpath.disabledAlgorithms=MD2, RSA keySize < 1024
-
 问题完美解决 就是这儿 java太强大了。
+
+jdk7 jdk.certpath.disabledAlgorithms=MD2
