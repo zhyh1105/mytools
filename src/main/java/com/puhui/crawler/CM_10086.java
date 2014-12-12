@@ -49,20 +49,40 @@ public class CM_10086 {
     private static SSLConnectionSocketFactory sscsf = SSLUtils.createSSLConnectionSocketFactory(
             CM_10086.class.getResourceAsStream("/certs/cmodsvr1.bj.chinamobile.com.keystore"), storePasswd);
 
-    public CM_10086(String phone, String password) throws Exception {
+    public CM_10086(String phone, String password) {
         this.phone = phone;
         this.password = password;
         this.client = HttpUtils.getHttpClient(true, cookieStore);
         this.client2 = HttpUtils.getHttpClient(sscsf, cookieStore);
+        this.comeon();
+    }
 
-        this.prepare();// 预备
-        this.isShowValidateRnum();// 是否显示验证码
-        this.bmccMobile();// 验证手机号
-        this.validateIp();// 验证ip
-        this.rnumCheck();// 验证验证码
-        this.login();// 登录
-        this.getBills();// 获取账单
-        this.close();
+    public void comeon() {
+        try {
+            this.prepare();// 预备
+            this.isShowValidateRnum();// 是否显示验证码
+            this.bmccMobile();// 验证手机号
+            this.validateIp();// 验证IP
+            this.rnumCheck();// 验证验证码
+            this.login();// 登录
+            this.getBills();// 获取账单
+        } catch (Exception e) {
+            logger.error(e.getMessage());
+        }
+    }
+
+    public void comeon(String phone, String password, String rnum) {
+        try {
+            this.prepare();// 预备
+            this.isShowValidateRnum();// 是否显示验证码
+            this.bmccMobile();// 验证手机号
+            this.validateIp();// 验证IP
+            this.rnumCheck();// 验证验证码
+            this.login();// 登录
+            this.getBills();// 获取账单
+        } catch (Exception e) {
+            logger.error(e.getMessage());
+        }
     }
 
     public void prepare() throws ClientProtocolException, IOException {
@@ -143,6 +163,22 @@ public class CM_10086 {
             logger.error(e.getMessage(), e);
         }
         return false;
+    }
+
+    public String getRnum(File dir) {
+        try {
+            String url = "https://bj.ac.10086.cn/ac/ValidateNum?smartID=" + System.currentTimeMillis();
+            HttpGet get = HttpUtils.get(url);
+            CloseableHttpResponse response = client.execute(get);
+            String fileName = System.currentTimeMillis() + ".jpg";
+            File codeFile = new File(dir, fileName);
+            FileUtils.copyInputStreamToFile(response.getEntity().getContent(), codeFile);
+            response.close();
+            return fileName;
+        } catch (Exception e) {
+            logger.error(e.getMessage(), e);
+        }
+        return null;
     }
 
     /**
@@ -246,7 +282,14 @@ public class CM_10086 {
         return false;
     }
 
-    public void getBills() throws ClientProtocolException, IOException {
+    /**
+     * 获取账单
+     * 
+     * @author zhuyuhang
+     * @throws ClientProtocolException
+     * @throws IOException
+     */
+    public boolean getBills() throws ClientProtocolException, IOException {
         String url = "https://cmodsvr1.bj.chinamobile.com/PortalCMOD/InnerInterFaceCiisHisBill";
         HttpGet get = HttpUtils.get(url);
         CloseableHttpResponse response = client2.execute(get);
@@ -271,6 +314,7 @@ public class CM_10086 {
                 this.sms();
             }
         }
+        return true;
     }
 
     /**

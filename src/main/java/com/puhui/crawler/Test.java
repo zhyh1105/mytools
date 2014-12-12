@@ -19,7 +19,7 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.select.Elements;
 
-import com.puhui.util.HttpUtils;
+import com.puhui.crawler.util.HttpUtils;
 
 public class Test {
     public static void main(String[] args) throws Exception {
