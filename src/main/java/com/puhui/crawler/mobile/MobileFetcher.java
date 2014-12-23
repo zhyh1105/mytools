@@ -33,6 +33,7 @@ public abstract class MobileFetcher {
     public static final ExecutorService EXECUTOR_SERVICE = Executors.newCachedThreadPool();
     protected final List<Future<Boolean>> futures = new ArrayList<>();
     private static final Logger logger = Logger.getLogger(MobileFetcher.class);
+    protected static final int PAGE_SIZE = NumberUtils.toInt(PropertiesUtil.getProps("cu.count.per.page"), 1000000);
     protected static final int MOBILE_BILLS_MONTH_COUNT = NumberUtils.toInt(
             PropertiesUtil.getProps("mobile.bills.month.count"), 6);
     /**
@@ -210,28 +211,9 @@ public abstract class MobileFetcher {
         return file;
     }
 
-    /**
-     * @author zhuyuhang
-     * @param file
-     * @param entity
-     * @return entity content string
-     * @throws UnsupportedEncodingException
-     * @throws ParseException
-     * @throws IOException
-     */
     protected String writeToFile(File file, HttpEntity entity) throws UnsupportedEncodingException, ParseException,
             IOException {
-        return writeToFile(file, entity, false);
-    }
-
-    protected String writeToFile(File file, HttpEntity entity, boolean encode) throws UnsupportedEncodingException,
-            ParseException, IOException {
         String content = EntityUtils.toString(entity, HttpUtils.UTF_8);
-        logger.debug(content);
-        if (encode) {
-            content = new String(content.getBytes(HttpUtils.UTF_8), HttpUtils.UTF_8);
-        }
-        logger.debug(content);
         FileUtils.write(file, content, HttpUtils.UTF_8);
         return content;
     }

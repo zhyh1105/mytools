@@ -36,7 +36,7 @@ public class CT_BJ_MobileFetcher extends MobileFetcher {
     private Logger logger = Logger.getLogger(CT_BJ_MobileFetcher.class);
     private String ssoSessionID;
     private CloseableHttpClient client;
-    private static final String PATTERN_10086 = "yyyy.MM";
+    private static final String PATTERN_10086 = "yyyyMM";
     private CookieStore cookieStore = new BasicCookieStore();
 
     public CT_BJ_MobileFetcher() {
@@ -53,7 +53,7 @@ public class CT_BJ_MobileFetcher extends MobileFetcher {
             File codeFile = new File(PropertiesUtil.getProps("mobile.captcha.dir"), System.currentTimeMillis() + ".jpg");
             FileUtils.copyInputStreamToFile(response.getEntity().getContent(), codeFile);
             response.close();
-            logger.debug("bj.cdma获取验证码");
+            logger.debug("获取验证码");
             return codeFile;
         } catch (Exception e) {
             logger.error(e.getMessage(), e);
@@ -82,7 +82,7 @@ public class CT_BJ_MobileFetcher extends MobileFetcher {
             response.close();
             return true;
         } catch (Exception e) {
-            logger.error("cdma验证附加码错误", e);
+            logger.error("验证附加码错误", e);
         }
         return false;
     }
@@ -136,7 +136,10 @@ public class CT_BJ_MobileFetcher extends MobileFetcher {
             String rs = HttpUtils.executePostWithResult(client, url, params);
             logger.debug(rs);
             JSONObject json = JSON.parseObject(rs);
-            return Boolean.valueOf(json.getString("billDetailValidate"));
+            if (Boolean.valueOf(json.getString("billDetailValidate"))) {
+                setRandomCode(randomCode);
+                return true;
+            }
         } catch (Exception e) {
             logger.error("验证随机验证码失败", e);
         }
@@ -145,22 +148,15 @@ public class CT_BJ_MobileFetcher extends MobileFetcher {
 
     @Override
     public boolean loadBills() {
-        this.submitBillTasks();// 获取账单
-        return true;
-    }
-
-    /**
-     * 获取账单
-     * 
-     * @author zhuyuhang
-     * @return
-     */
-    protected void submitBillTasks() {
         try {
-            super.submitBillTasks();
+            gsm();
+            sms();
+            hisBill();
+            personalInfo();
         } finally {
             this.close();
         }
+        return true;
     }
 
     /**
@@ -189,7 +185,7 @@ public class CT_BJ_MobileFetcher extends MobileFetcher {
         // http://bj.189.cn/service/bill/billInfoQuery.action?billReqType=3&billCycle=201406
         // 实时 get
         String ms = DateUtils.formatDate(month, "yyyyMM");
-        logger.debug("bj.cdma历史账单：" + ms);
+        logger.debug("历史账单：" + ms);
         String url = "http://bj.189.cn/service/bill/billInfoQuery.action?billReqType=3&billCycle=" + ms;
         HttpGet get = HttpUtils.get(url);
         try {
@@ -211,41 +207,8 @@ public class CT_BJ_MobileFetcher extends MobileFetcher {
     protected void gsm() {
         Date date = new Date();
         for (int i = 0; i < MOBILE_BILLS_MONTH_COUNT; i++) {
-            gsm(date);
+            commonFee(date, "1", BILL_TYPE_GSM);
             date = DateUtils.addMonths(date, -1);
-        }
-    }
-
-    /**
-     * 通话详单
-     * 
-     * @author zhuyuhang
-     * @param month
-     *            月份
-     * @throws ClientProtocolException
-     * @throws IOException
-     */
-    private void gsm(Date month) {
-        Map<String, Object> params = new HashMap<>();
-        String ms = DateUtils.formatDate(month, PATTERN_10086);
-        logger.debug("bj.cdma通话详单" + ms);
-        params.put("billDetailValidate", "true");
-        params.put("productSpecID", null);
-        params.put("downBillDetailType", 0);
-        params.put("downStartTime", null);
-        params.put("downEndTime", null);
-        params.put("billDetailType", 1);
-        params.put("startTime", DateUtils.getFirstDayOfMonth(month));
-        params.put("endTime", DateUtils.getLastDayOfMonth(month));
-        // http://bj.189.cn/service/bill/billDetailQuery.action?billDetailValidate=true&productSpecID=&downBillDetailType=0&downStartTime=&downEndTime=&billDetailType=1&startTime=2014-09-01&endTime=2014-09-30
-        String url = "http://bj.189.cn/service/bill/billDetailQuery.action";
-        HttpPost post = HttpUtils.post(url, params);
-        try {
-            CloseableHttpResponse response = client.execute(post);
-            writeToFile(createTempFile(BILL_TYPE_GSM), response.getEntity());
-            response.close();
-        } catch (Exception e) {
-            logger.error(e.getMessage(), e);
         }
     }
 
@@ -259,33 +222,31 @@ public class CT_BJ_MobileFetcher extends MobileFetcher {
     protected void sms() {
         Date date = new Date();
         for (int i = 0; i < MOBILE_BILLS_MONTH_COUNT; i++) {
-            sms(date);
+            commonFee(date, "2", BILL_TYPE_SMS);
             date = DateUtils.addMonths(date, -1);
         }
     }
 
-    /**
-     * 短信详单
-     * 
-     * @author zhuyuhang
-     * @throws ClientProtocolException
-     * @throws IOException
-     */
-    private void sms(Date month) {
-        // https://cmodsvr1.bj.chinamobile.com/PortalCMOD/detail/detail.do?checkMonth=2014.10&detailType=sms&ssoSessionID=2c9d82fa477d6ea30149e59938ae0b0e
+    private void commonFee(Date month, String type, String billType) {
         Map<String, Object> params = new HashMap<>();
         String ms = DateUtils.formatDate(month, PATTERN_10086);
-        logger.debug("bj.cdma短信详单" + ms);
-        params.put("checkMonth", ms);
-        params.put("detailType", "sms");
-        params.put("ssoSessionID", ssoSessionID);
-
-        String url = "https://cmodsvr1.bj.chinamobile.com/PortalCMOD/detail/detail.do?1=1";
-        url += HttpUtils.buildParamString(params);
+        logger.debug(billType + ms);
+        params.put("billDetailValidate", "true");
+        params.put("productSpecID", "");
+        params.put("downBillDetailType", 0);
+        params.put("downStartTime", "");
+        params.put("downEndTime", "");
+        params.put("billDetailType", type);
+        params.put("startTime", DateUtils.getFirstDayOfMonth(month));
+        params.put("endTime", DateUtils.getLastDayOfMonth(month));
+        params.put("sRandomCode", getRandomCode());
+        params.put("billPageSize", PAGE_SIZE);
+        // http://bj.189.cn/service/bill/billDetailQuery.action?billDetailValidate=true&productSpecID=&downBillDetailType=0&downStartTime=&downEndTime=&billDetailType=1&startTime=2014-09-01&endTime=2014-09-30
+        String url = "http://bj.189.cn/service/bill/billDetailQuery.action";
+        HttpPost post = HttpUtils.post(url, params);
         try {
-            HttpGet get = HttpUtils.get(url);
-            CloseableHttpResponse response = client.execute(get);
-            writeToFile(createTempFile(BILL_TYPE_SMS), response.getEntity());
+            CloseableHttpResponse response = client.execute(post);
+            writeToFile(createTempFile(billType), response.getEntity());
             response.close();
         } catch (Exception e) {
             logger.error(e.getMessage(), e);
@@ -342,7 +303,7 @@ public class CT_BJ_MobileFetcher extends MobileFetcher {
             String url = "http://www.189.cn/dqmh/UnifiedLogin.do?method=unifiedTicketCallBack&backUrl=http://bj.189.cn/service/account/customerHome.action";
             HttpGet get = HttpUtils.get(url);
             client.execute(get).close();
-            logger.debug("cdma预备");
+            logger.debug("预备");
             return true;
         } catch (Exception e) {
             logger.error(e.getMessage(), e);
@@ -451,43 +412,44 @@ public class CT_BJ_MobileFetcher extends MobileFetcher {
 
     @Override
     protected void personalInfo() {
-        // TODO Auto-generated method stub
-
+        try {
+            String url = "http://bj.189.cn/service/manage/modifyUserInfo.action";
+            HttpGet request = HttpUtils.get(url);
+            CloseableHttpResponse response = client.execute(request);
+            writeToFile(createTempFile(BILL_TYPE_PERSONALINFO), response.getEntity());
+            response.close();
+        } catch (Exception e) {
+            logger.error(e.getMessage(), e);
+        }
     }
 
     @Override
     protected void mzlog() {
-        // TODO Auto-generated method stub
 
     }
 
     @Override
     protected void addvalue() {
-        // TODO Auto-generated method stub
 
     }
 
     @Override
     protected void rc() {
-        // TODO Auto-generated method stub
 
     }
 
     @Override
     protected void gprs() {
-        // TODO Auto-generated method stub
 
     }
 
     @Override
     protected void mon() {
-        // TODO Auto-generated method stub
 
     }
 
     @Override
     protected void currFee() {
-        // TODO Auto-generated method stub
 
     }
 }

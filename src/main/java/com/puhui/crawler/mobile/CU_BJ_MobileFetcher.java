@@ -9,7 +9,6 @@ import java.util.Map;
 import java.util.concurrent.Callable;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.http.client.CookieStore;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -22,7 +21,6 @@ import org.apache.log4j.Logger;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
-import com.amos.tool.PropertiesUtil;
 import com.puhui.crawler.Messages;
 import com.puhui.crawler.util.DateUtils;
 import com.puhui.crawler.util.HttpUtils;
@@ -37,7 +35,6 @@ public class CU_BJ_MobileFetcher extends MobileFetcher {
     private CookieStore cookieStore = new BasicCookieStore();
     private CloseableHttpClient client;
     private String packageName = null;
-    private static final int PAGE_SIZE = NumberUtils.toInt(PropertiesUtil.getProps("cu.count.per.page"), 1000000);
     private static final String PATTERN = "yyyyMM";
 
     public CU_BJ_MobileFetcher() {

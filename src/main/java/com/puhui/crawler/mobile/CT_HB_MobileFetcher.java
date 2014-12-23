@@ -438,7 +438,7 @@ public class CT_HB_MobileFetcher extends MobileFetcher {
         params.put("startMonth", ms);
         params.put("type", type);
         params.put("prod_type", "1");
-        params.put("pagecount", 10000);
+        params.put("pagecount", CU_BJ_MobileFetcher.PAGE_SIZE);
         String url = "http://hb.189.cn/feesquery_querylist.action";
         try {
             HttpPost request = HttpUtils.post(url, params);

@@ -444,14 +444,16 @@ public class HttpUtils {
         return result;
     }
 
-    public static String unicodeToString(String str) {
-        Pattern pattern = Pattern.compile("(\\\\u(\\p{XDigit}{4}))");
-        Matcher matcher = pattern.matcher(str);
-        char ch;
-        while (matcher.find()) {
-            ch = (char) Integer.parseInt(matcher.group(2), 16);
-            str = str.replace(matcher.group(1), ch + "");
+    private static final Pattern RE_UNICODE = Pattern.compile("\\\\u([0-9a-zA-Z]{4})");
+
+    public static String unicodeToString(String s) {
+        Matcher m = RE_UNICODE.matcher(s);
+        StringBuffer sb = new StringBuffer(s.length());
+        while (m.find()) {
+            m.appendReplacement(sb, Character.toString((char) Integer.parseInt(m.group(1), 16)));
         }
-        return str;
+        m.appendTail(sb);
+        return sb.toString();
     }
+
 }
