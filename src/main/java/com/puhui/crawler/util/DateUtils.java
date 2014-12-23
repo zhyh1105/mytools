@@ -3,7 +3,6 @@ package com.puhui.crawler.util;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.UUID;
 
 import org.apache.commons.lang3.StringUtils;
 
@@ -38,7 +37,7 @@ public class DateUtils {
     }
 
     /**
-     * 获取给定日期的月最后一天 如果是当前月就是当前天
+     * 获取给定日期的月最后一天 如果是当前月就是当前天 yyyy-MM-dd
      * 
      * @author zhuyuhang
      * @param date
@@ -161,12 +160,6 @@ public class DateUtils {
     }
 
     public static void main(String[] args) {
-        UUID uuid = UUID.randomUUID();
-        uuid.toString().replace("-", "").toLowerCase();
-        Date date = new Date();
-        date.setTime(1416816529974l);
-        System.out.println(formatDate(date, "yyyy-MM-dd HH:mm:ss S"));
-        date.setTime(1416816528819l);
-        System.out.println(formatDate(date, "yyyy-MM-dd HH:mm:ss S"));
+        System.out.println(getLastDayOfMonth(new Date(), "d"));
     }
 }

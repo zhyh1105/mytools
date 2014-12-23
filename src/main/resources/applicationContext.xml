@@ -18,10 +18,14 @@
        			<!-- 电信 -->
        			<entry key="北京电信" value="com.puhui.crawler.mobile.CT_BJ_MobileFetcher"/>
        			<entry key="湖南电信" value="com.puhui.crawler.mobile.CT_HN_MobileFetcher"/>
+       			<entry key="湖北电信" value="com.puhui.crawler.mobile.CT_HB_MobileFetcher"/>
+       			<entry key="重庆电信" value="com.puhui.crawler.mobile.CT_CQ_MobileFetcher"/>
        			
        			<!-- 移动 -->
        			<entry key="北京移动" value="com.puhui.crawler.mobile.CM_BJ_MobileFetcher"/>
        			<entry key="湖北移动" value="com.puhui.crawler.mobile.CM_HB_MobileFetcher"/>
+       			<entry key="湖南移动" value="com.puhui.crawler.mobile.CM_HN_MobileFetcher"/>
+       			<entry key="重庆移动" value="com.puhui.crawler.mobile.CM_CQ_MobileFetcher"/>
        		</map>
        	</property>
        </bean>

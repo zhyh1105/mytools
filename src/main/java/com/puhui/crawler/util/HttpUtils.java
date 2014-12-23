@@ -10,6 +10,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.net.ssl.SSLContext;
 
@@ -32,6 +34,7 @@ import org.apache.http.cookie.Cookie;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.client.HttpClients;
+import org.apache.http.impl.cookie.BasicClientCookie;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.util.EntityUtils;
 import org.jsoup.Jsoup;
@@ -49,9 +52,9 @@ public class HttpUtils {
     // private static RequestConfig DEFAULT_REQUEST_CONFIG =
     // RequestConfig.custom().setRedirectsEnabled(false)
     // .setRelativeRedirectsAllowed(false).setCookieSpec(CookieSpecs.BROWSER_COMPATIBILITY).build();
-    private static RequestConfig DEFAULT_REQUEST_CONFIG = RequestConfig.custom().setProxy(PROXY_FIDDLER)
-            .setRedirectsEnabled(false).setRelativeRedirectsAllowed(false)
-            .setCookieSpec(CookieSpecs.BROWSER_COMPATIBILITY).build();
+    public static RequestConfig DEFAULT_REQUEST_CONFIG = RequestConfig.custom().setProxy(PROXY_FIDDLER)
+            .setRedirectsEnabled(false).setRelativeRedirectsAllowed(false).setCookieSpec(CookieSpecs.BEST_MATCH)
+            .build();
     private static SSLContext sslContext = null;
     static {
         try {
@@ -115,6 +118,7 @@ public class HttpUtils {
         return buildParams(params, UTF_8);
     }
 
+    @SuppressWarnings("rawtypes")
     public static UrlEncodedFormEntity buildParams(Map<String, Object> params, String encoding) {
         if (params == null || params.isEmpty()) {
             return null;
@@ -122,8 +126,19 @@ public class HttpUtils {
         List<NameValuePair> parameters = new ArrayList<NameValuePair>();
         for (Entry<String, Object> entry : params.entrySet()) {
             Object value = entry.getValue();
-            value = value == null ? null : value.toString();
-            parameters.add(new BasicNameValuePair(entry.getKey(), (String) value));
+            if (value != null) {
+                if (value instanceof List) {
+                    for (Object o : (List) value) {
+                        if (o != null) {
+                            parameters.add(new BasicNameValuePair(entry.getKey(), o.toString()));
+                        }
+                    }
+                } else {
+                    parameters.add(new BasicNameValuePair(entry.getKey(), value.toString()));
+                }
+            } else {
+                parameters.add(new BasicNameValuePair(entry.getKey(), null));
+            }
         }
         return new UrlEncodedFormEntity(parameters, Charset.forName(encoding));
     }
@@ -235,7 +250,7 @@ public class HttpUtils {
 
     public static void printCookies(CookieStore cookieStore) {
         for (Cookie cookie : cookieStore.getCookies()) {
-            System.out.printf("%s\t%s\n", cookie.getName(), cookie.getValue());
+            System.out.println(cookie.toString());
         }
     }
 
@@ -244,7 +259,11 @@ public class HttpUtils {
     }
 
     public static HttpPost buildPostFromHtml(String html, String selector) {
-        Document document = Jsoup.parse(html, HttpUtils.GBK);
+        return buildPostFromHtml(html, selector, HttpUtils.GBK);
+    }
+
+    public static HttpPost buildPostFromHtml(String html, String selector, String charSet) {
+        Document document = Jsoup.parse(html, charSet == null ? HttpUtils.GBK : charSet);
         Elements elements = document.select(selector);
         if (elements.size() > 0) {
             Element form = elements.get(0);
@@ -259,15 +278,100 @@ public class HttpUtils {
         return null;
     }
 
+    public static Map<String, Object> getFormUrlAndParamsFromHtml(String html, String selector) {
+        return getFormUrlAndParamsFromHtml(html, selector, HttpUtils.GBK);
+    }
+
+    public static Map<String, Object> getFormUrlAndParamsFromHtml(String html, String selector, String charSet) {
+        Document document = Jsoup.parse(html, charSet == null ? HttpUtils.GBK : charSet);
+        Elements elements = document.select(selector);
+        if (elements.size() > 0) {
+            Element form = elements.get(0);
+            String url = form.attr("action");
+            Elements inputs = form.select("input[type=hidden]");
+            Map<String, Object> params = new HashMap<>();
+            for (int i = 0; i < inputs.size(); i++) {
+                params.put(inputs.get(i).attr("name"), inputs.get(i).attr("value"));
+            }
+            Map<String, Object> result = new HashMap<>();
+            result.put("url", url);
+            result.put("params", params);
+            return result;
+        }
+        return null;
+    }
+
+    /**
+     * 获取input[type=hidden]
+     * 
+     * @author zhuyuhang
+     * @param html
+     * @return
+     */
+    public static Map<String, Object> buildHiddenInputParamsFromHtml(String html) {
+        return buildHiddenInputParamsFromHtml(html, HttpUtils.GBK);
+    }
+
+    /**
+     * 获取input[type=hidden]
+     * 
+     * @author zhuyuhang
+     * @param html
+     * @param charSet
+     * @return
+     */
+    public static Map<String, Object> buildHiddenInputParamsFromHtml(String html, String charSet) {
+        Document document = Jsoup.parse(html, charSet == null ? HttpUtils.GBK : charSet);
+        Elements inputs = document.select("input[type=hidden]");
+        Map<String, Object> params = new HashMap<>();
+        for (int i = 0; i < inputs.size(); i++) {
+            String name = inputs.get(i).attr("name");
+            String value = inputs.get(i).attr("value");
+            if (params.get(name) != null) {
+                Object v = params.get(name);
+                if (v instanceof List) {
+                    ((List<Object>) v).add(value);
+                } else {
+                    List<Object> l = new ArrayList<>();
+                    l.add(v);
+                    l.add(value);
+                    params.put(name, l);
+                }
+            } else {
+                params.put(name, value);
+            }
+        }
+        return params;
+    }
+
     public static Map<String, Object> buildParamsFromHtml(String html, String selector) {
-        Document document = Jsoup.parse(html, HttpUtils.GBK);
+        return buildParamsFromHtml(html, selector, HttpUtils.GBK);
+    }
+
+    @SuppressWarnings("unchecked")
+    public static Map<String, Object> buildParamsFromHtml(String html, String selector, String charSet) {
+        Document document = Jsoup.parse(html, charSet == null ? HttpUtils.GBK : charSet);
         Elements elements = document.select(selector);
         if (elements.size() > 0) {
             Element form = elements.get(0);
             Elements inputs = form.select("input[type=hidden]");
             Map<String, Object> params = new HashMap<>();
             for (int i = 0; i < inputs.size(); i++) {
-                params.put(inputs.get(i).attr("name"), inputs.get(i).attr("value"));
+                String name = inputs.get(i).attr("name");
+                String value = inputs.get(i).attr("value");
+                if (params.get(name) != null) {
+                    Object v = params.get(name);
+                    if (v instanceof List) {
+                        ((List<Object>) v).add(value);
+                    } else {
+                        List<Object> l = new ArrayList<>();
+                        l.add(v);
+                        l.add(value);
+                        params.put(name, l);
+                    }
+                } else {
+                    params.put(name, value);
+                }
             }
             return params;
         }
@@ -300,5 +404,54 @@ public class HttpUtils {
             return headers[0].getValue();
         }
         return null;
+    }
+
+    /**
+     * 从header里获取Location
+     * 
+     * @author zhuyuhang
+     * @param response
+     * @return
+     */
+    public static String getLocationFromHeader(CloseableHttpResponse response) {
+        return getLocationFromHeader(response, false);
+    }
+
+    /**
+     * @author zhuyuhang
+     * @param name
+     * @param value
+     * @param path
+     * @param domain
+     * @return
+     */
+    public static BasicClientCookie getCookie(String name, String value, String domain, String path) {
+        BasicClientCookie clientCookie = new BasicClientCookie(name, value);
+        clientCookie.setDomain(domain);
+        clientCookie.setPath(path);
+        return clientCookie;
+    }
+
+    public static String getLocationFromHeader(CloseableHttpResponse response, boolean close) {
+        String result = getHeader(response, "Location");
+        if (close) {
+            try {
+                response.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return result;
+    }
+
+    public static String unicodeToString(String str) {
+        Pattern pattern = Pattern.compile("(\\\\u(\\p{XDigit}{4}))");
+        Matcher matcher = pattern.matcher(str);
+        char ch;
+        while (matcher.find()) {
+            ch = (char) Integer.parseInt(matcher.group(2), 16);
+            str = str.replace(matcher.group(1), ch + "");
+        }
+        return str;
     }
 }

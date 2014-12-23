@@ -51,13 +51,18 @@ public abstract class MobileFetcher {
      * 通话详单 gsm
      * 短信详单 sms
      * 个人信息 personalinfo
+     * 代收业务扣费记录 mon
      * 实时话费 currFee
+     * 套餐及固定费详单 rc
+     * 上网流量 gprs
+     * 增值业务扣费记录 addvalue
      * </pre>
      * 
      * @author zhuyuhang
      */
     protected static final String BILL_TYPE_HISBILL = "hisbill", BILL_TYPE_GSM = "gsm", BILL_TYPE_SMS = "sms",
-            BILL_TYPE_PERSONALINFO = "personalinfo", BILL_TYPE_CURRFEE = "currFee";
+            BILL_TYPE_PERSONALINFO = "personalinfo", BILL_TYPE_MON = "mon", BILL_TYPE_GPRS = "gprs",
+            BILL_TYPE_RC = "rc", BILL_TYPE_CURRFEE = "currfee", BILL_TYPE_ADDVALUE = "addvalue";
     /**
      * 手機號
      * 
@@ -198,8 +203,10 @@ public abstract class MobileFetcher {
             file.mkdir();
         }
         // 185500492821_CU_BJ_type.html
-        file = new File(file, getPhone() + "_" + getIspSimpleName() + "_" + getAreaSimpleName() + "_" + type + "_"
-                + System.currentTimeMillis() + ".html");
+        String name = getPhone() + "_" + getIspSimpleName() + "_" + getAreaSimpleName() + "_" + type + "_"
+                + System.currentTimeMillis() + ".html";
+        name = name.toLowerCase();
+        file = new File(file, name);
         return file;
     }
 
@@ -207,14 +214,26 @@ public abstract class MobileFetcher {
      * @author zhuyuhang
      * @param file
      * @param entity
+     * @return entity content string
      * @throws UnsupportedEncodingException
      * @throws ParseException
      * @throws IOException
      */
-    protected void writeToFile(File file, HttpEntity entity) throws UnsupportedEncodingException, ParseException,
+    protected String writeToFile(File file, HttpEntity entity) throws UnsupportedEncodingException, ParseException,
             IOException {
+        return writeToFile(file, entity, false);
+    }
+
+    protected String writeToFile(File file, HttpEntity entity, boolean encode) throws UnsupportedEncodingException,
+            ParseException, IOException {
         String content = EntityUtils.toString(entity, HttpUtils.UTF_8);
+        logger.debug(content);
+        if (encode) {
+            content = new String(content.getBytes(HttpUtils.UTF_8), HttpUtils.UTF_8);
+        }
+        logger.debug(content);
         FileUtils.write(file, content, HttpUtils.UTF_8);
+        return content;
     }
 
     /**

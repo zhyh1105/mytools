@@ -2,47 +2,49 @@ package com.puhui.crawler.mobile;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.codec.binary.Base64;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.CookieStore;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
 import org.apache.http.impl.client.BasicCookieStore;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.util.EntityUtils;
 import org.apache.log4j.Logger;
 
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONObject;
 import com.puhui.crawler.util.DateUtils;
 import com.puhui.crawler.util.HttpUtils;
+import com.puhui.crawler.util.SSLUtils;
 
 /**
- * 湖北移动
+ * 重庆移动
  * 
  * @author zhuyuhang
  */
-public class CM_HB_MobileFetcher extends MobileFetcher {
-    private Logger logger = Logger.getLogger(CM_HB_MobileFetcher.class);
-    private String ssoSessionID;
+public class CM_CQ_MobileFetcher extends MobileFetcher {
+    private Logger logger = Logger.getLogger(CM_CQ_MobileFetcher.class);
     private CloseableHttpClient client;
-    // private CloseableHttpClient clientWithSSL;
-    // private static String storePasswd = "123456";
+    private CloseableHttpClient clientWithSSL;
+    private static String storePasswd = "123456";
     private static final String PATTERN_10086 = "yyyyMM";
     private CookieStore cookieStore = new BasicCookieStore();
+    private Map<String, Object> form1Params = null;
+    private static final String FORM1_SELECTOR = "#Form1";
 
-    // private static SSLConnectionSocketFactory sscsf =
-    // SSLUtils.createSSLConnectionSocketFactory(
-    // CM_HB_MobileFetcher.class.getResourceAsStream("/certs/hb.ac.10086.cn.keystore"),
-    // storePasswd);
+    private static SSLConnectionSocketFactory sscsf = SSLUtils.createSSLConnectionSocketFactory(
+            CM_HB_MobileFetcher.class.getResourceAsStream("/certs/service.cq.10086.cn.keystore"), storePasswd);
 
-    public CM_HB_MobileFetcher() {
+    public CM_CQ_MobileFetcher() {
         this.client = HttpUtils.getHttpClient(true, cookieStore);
-        // this.clientWithSSL = HttpUtils.getHttpClient(sscsf, cookieStore);
+        this.clientWithSSL = HttpUtils.getHttpClient(sscsf, cookieStore);
     }
 
     @Override
@@ -68,7 +70,11 @@ public class CM_HB_MobileFetcher extends MobileFetcher {
 
     private boolean prepare() throws ClientProtocolException, IOException {
         try {
-            String url = "https://hb.ac.10086.cn/login";
+            String url = "http://www.cq.10086.cn";
+            HttpUtils.executeGet(client, url);
+            url = "https://cq.ac.10086.cn/login";
+            HttpUtils.executeGet(client, url);
+            url = "http://service.cq.10086.cn/app?service=page/newLogin.login";
             HttpGet get = HttpUtils.get(url);
             client.execute(get).close();
             logger.debug("预备");
@@ -87,66 +93,29 @@ public class CM_HB_MobileFetcher extends MobileFetcher {
      */
     public boolean login() {
         try {
-            String url = "https://hb.ac.10086.cn/SSO/loginbox?!=1";
+            String url = "https://service.cq.10086.cn/app?service=page/newLogin.login&listener=login";
             Map<String, Object> params = new HashMap<>();
-            params.put("accountType", 0);
-            params.put("username", this.getPhone());
-            params.put("passwordType", "1");
-            params.put("password", this.getPassword());
-            params.put("smsRandomCode", null);
-            params.put("emailusername", "请输入登录帐号");
-            params.put("emailpassword", null);
-            params.put("validateCode", this.getCaptchaCode());
-            params.put("action", "/SSO/loginbox");
-            params.put("style", "mymobile");
-            params.put("service", "my");
-            params.put("continue", null);
-            params.put("submitMode", "login");
-            params.put("loginName", this.getPhone());
-            params.put("password", this.getPassword());
-            params.put("guestIP", "202.103.10.10");
+            params.put("service", "direct/1/newLogin.login/$Form");
+            params.put("Form0", "S0");
+            params.put("Form0", "Form0");
+            params.put("USER_PASSWD_SELECT", "1");
+            params.put("SERIAL_NUMBER", getPhone());
+            // base64编码
+            params.put("USER_PASSWD", Base64.encodeBase64String(getPassword().getBytes()));
+            params.put("USER_PASSSMS", null);
+            params.put("EFFICACY_CODE", getCaptchaCode());
+            params.put("clogin", "on");
             HttpPost post = HttpUtils.post(url, params);
             CloseableHttpResponse response = client.execute(post);
             String responseString = EntityUtils.toString(response.getEntity());
             logger.debug(responseString);
-            response.close();
-
-            post = HttpUtils.buildPostFromHtml(responseString, "#sso");
-            if (post != null) {
-                client.execute(post).close();
-            }
-
-            url = "http://www.hb.10086.cn/my/index.action";
-            HttpUtils.executeGet(client, url);
-
-            url = "http://www.hb.10086.cn/my";
-            HttpUtils.executeGet(client, url);
-            // 积分
-            url = "http://www.hb.10086.cn/my/score/customerAjax.action?_=1418191107717";
-            responseString = HttpUtils.executeGetWithResult(client, url);
-            logger.debug(responseString);
-            // 当前消费情况
-            url = "http://www.hb.10086.cn/my/balance/queryBalance.action";
-            responseString = HttpUtils.executeGetWithResult(client, url);
-            logger.debug(responseString);
-
-            logger.debug("hb10086自动登录确认");
-            url = "http://www.hb.10086.cn/service/autoLogin.action?auto=true";
-            responseString = HttpUtils.executeGetWithResult(client, url);
-            logger.debug(responseString);
-            post = HttpUtils.buildPostFromHtml(responseString, "#frmPost");
-            responseString = HttpUtils.executePostWithResult(client, post);
-            logger.debug(responseString);
-            post = HttpUtils.buildPostFromHtml(responseString, "#sso");
-            responseString = HttpUtils.executePostWithResult(client, post);
-            logger.debug(responseString);
-
-            String cmtokenid = HttpUtils.getFirstCookie(cookieStore, "cmtokenid");
-            if (cmtokenid == null) {
+            url = HttpUtils.getHeader(response, "Location");
+            if (url == null) {
                 return false;
             }
-            this.ssoSessionID = getSSOSessionID(cmtokenid);
-            logger.debug("hb10086登录，ssoSessionID:" + ssoSessionID);
+            response.close();
+            responseString = HttpUtils.executeGetWithResult(client, url);
+            logger.debug(responseString);
             return true;
         } catch (Exception e) {
             logger.error(e.getMessage(), e);
@@ -154,16 +123,17 @@ public class CM_HB_MobileFetcher extends MobileFetcher {
         return false;
     }
 
-    private String getSSOSessionID(String cmtokenid) {
-        return cmtokenid.split("@")[0];
-    }
-
     @Override
     protected void submitBillTasks() {
         try {
-            // 自动确认登录
+            // 二次登录确认
             this.loginSecondCheck();
-            super.submitBillTasks();
+            // 重庆移动只能线性请求 它有 token 验证
+            // super.submitBillTasks();
+            gsm();
+            sms();
+            hisBill();
+            personalInfo();
             this.close();
         } catch (Exception e) {
             logger.error(e.getMessage());
@@ -178,6 +148,17 @@ public class CM_HB_MobileFetcher extends MobileFetcher {
      * @throws IOException
      */
     private void loginSecondCheck() throws ClientProtocolException, IOException {
+        String url = "http://service.cq.10086.cn/app?service=page/personalinfo.SecondCheck&listener=doCheckedSms&PageNumber="
+                + getRandomCode();
+        HttpGet get = HttpUtils.get(url);
+        CloseableHttpResponse response = client.execute(get);
+        url = HttpUtils.getHeader(response, "Location");
+        response.close();
+        get = HttpUtils.get(url);
+        response = client.execute(get);
+        String responseString = EntityUtils.toString(response.getEntity());
+        response.close();
+        form1Params = HttpUtils.buildParamsFromHtml(responseString, FORM1_SELECTOR);
     }
 
     /**
@@ -209,19 +190,12 @@ public class CM_HB_MobileFetcher extends MobileFetcher {
         String ms = DateUtils.formatDate(month, PATTERN_10086);
         logger.debug("历史账单" + ms);
         Map<String, Object> params = new HashMap<String, Object>();
-        String url = "http://www.hb.10086.cn/my/billdetails/showbillMixQuery.action?postion=outer";
-        if (ms.equals(DateUtils.formatDate(new Date(), PATTERN_10086))) {// 实时
-            params.put("qryMonthType", "current");
-        } else {
-            params.put("qryMonthType", "history");
-        }
-        params.put("theMonth", ms);
-        params.put("menuid", "myBill");
-        params.put("groupId", "tabs3");
+        String url = "http://service.cq.10086.cn/app?service=page/operation.AJAXMyBill&listener=makePieChar&qtime="
+                + System.currentTimeMillis() + "&month=" + ms;
         url += HttpUtils.buildParamString(params);
-        HttpPost post = HttpUtils.post(url);
+        HttpGet get = HttpUtils.get(url);
         try {
-            CloseableHttpResponse response = client.execute(post);
+            CloseableHttpResponse response = client.execute(get);
             writeToFile(createTempFile(BILL_TYPE_HISBILL), response.getEntity());
             response.close();
         } catch (Exception e) {
@@ -239,7 +213,7 @@ public class CM_HB_MobileFetcher extends MobileFetcher {
     protected void gsm() {
         Date date = new Date();
         for (int i = 0; i < MOBILE_BILLS_MONTH_COUNT; i++) {
-            commonFee(date, "GSM", BILL_TYPE_GSM, "通话详单");
+            commonFee(date, "10", BILL_TYPE_GSM, "通话详单");
             date = DateUtils.addMonths(date, -1);
         }
     }
@@ -254,14 +228,14 @@ public class CM_HB_MobileFetcher extends MobileFetcher {
     protected void sms() {
         Date date = new Date();
         for (int i = 0; i < MOBILE_BILLS_MONTH_COUNT; i++) {
-            commonFee(date, "SMS", BILL_TYPE_SMS, "短信详单");
+            commonFee(date, "12", BILL_TYPE_SMS, "短信详单");
             date = DateUtils.addMonths(date, -1);
         }
     }
 
     @Override
     protected void personalInfo() {
-        String url = "http://www.hb.10086.cn/my/account/basicInfoAction.action";
+        String url = "https://service.cq.10086.cn/app?service=page/operation.PersonalInfo&listener=initPage";
         try {
             HttpGet get = HttpUtils.get(url);
             CloseableHttpResponse response = client.execute(get);
@@ -283,7 +257,7 @@ public class CM_HB_MobileFetcher extends MobileFetcher {
         // TODO Auto-generated method stub
         Date date = new Date();
         for (int i = 0; i < MOBILE_BILLS_MONTH_COUNT; i++) {
-            commonFee(date, "ISMG", BILL_TYPE_ADDVALUE, "增值业务扣费记录");
+            // commonFee(date, "13", BILL_TYPE_ADDVALUE, "增值业务扣费记录");
             date = DateUtils.addMonths(date, -1);
         }
     }
@@ -292,7 +266,7 @@ public class CM_HB_MobileFetcher extends MobileFetcher {
     protected void rc() {
         Date date = new Date();
         for (int i = 0; i < MOBILE_BILLS_MONTH_COUNT; i++) {
-            commonFee(date, "FIXFEE", BILL_TYPE_RC, "套餐及固定费详单");
+            // commonFee(date, "9", BILL_TYPE_RC, "套餐及固定费详单");
             date = DateUtils.addMonths(date, -1);
         }
     }
@@ -301,7 +275,7 @@ public class CM_HB_MobileFetcher extends MobileFetcher {
     protected void gprs() {
         Date date = new Date();
         for (int i = 0; i < MOBILE_BILLS_MONTH_COUNT; i++) {
-            commonFee(date, "GPRSWLAN", BILL_TYPE_GPRS, "上网详单");
+            // commonFee(date, "11", BILL_TYPE_GPRS, "上网详单");
             date = DateUtils.addMonths(date, -1);
         }
     }
@@ -310,7 +284,7 @@ public class CM_HB_MobileFetcher extends MobileFetcher {
     protected void mon() {
         Date date = new Date();
         for (int i = 0; i < MOBILE_BILLS_MONTH_COUNT; i++) {
-            commonFee(date, "INFOFEE", BILL_TYPE_MON, "代收业务扣费记录");
+            // commonFee(date, "14", BILL_TYPE_MON, "代收业务扣费记录");
             date = DateUtils.addMonths(date, -1);
         }
     }
@@ -335,27 +309,39 @@ public class CM_HB_MobileFetcher extends MobileFetcher {
      *            描述
      */
     private void commonFee(Date month, String type, String typeInFileName, String desc) {
-        Map<String, Object> params = new HashMap<>();
+        if (form1Params == null || form1Params.isEmpty()) {
+            return;
+        }
         String ms = DateUtils.formatDate(month, PATTERN_10086);
         logger.debug(desc + ms);
-        params.put("detailBean.billcycle", ms);
-        params.put("detailBean.flag", type);
-        params.put("menuid", "myDetailBill");
-        params.put("detailBean.selecttype", "0");
-        params.put("groupId", "tabs3");
-        params.put("detailBean.password", this.getPassword());
-        params.put("detailBean.chkey", this.getRandomCode());
-
-        String url = "http://www.hb.10086.cn/my/billdetails/billDetailQry.action?postion=outer";
-        url += HttpUtils.buildParamString(params);
+        form1Params.put("QUERY_TYPE", "2");
+        form1Params.put("SELECT_MONTH", ms);
+        form1Params.put("infoType", type);
+        form1Params.put("STARTDATE", "");
+        form1Params.put("ENDDATE", "");
+        form1Params.put("SELECT_MONTHVAl", getMonthVal());
+        String url = "http://service.cq.10086.cn/app?service=page/myYD.OrderQuery&listener=detailQuery";
         try {
-            HttpGet get = HttpUtils.get(url);
-            CloseableHttpResponse response = client.execute(get);
-            writeToFile(createTempFile(typeInFileName), response.getEntity());
+            HttpPost post = HttpUtils.post(url, form1Params);
+            post.setHeader("Referer", "http://service.cq.10086.cn/app?service=page/myYD.OrderQuery&listener=initPage");
+            CloseableHttpResponse response = client.execute(post);
+            String contentString = writeToFile(createTempFile(typeInFileName), response.getEntity());
             response.close();
+            form1Params.clear();
+            form1Params = HttpUtils.buildParamsFromHtml(contentString, FORM1_SELECTOR);
         } catch (Exception e) {
             logger.error(e.getMessage(), e);
         }
+    }
+
+    private List<String> getMonthVal() {
+        List<String> monthVal = new ArrayList<>();
+        Date date = new Date();
+        for (int i = 0; i < 6; i++) {
+            monthVal.add(DateUtils.formatDate(date, PATTERN_10086));
+            date = DateUtils.addMonths(date, -1);
+        }
+        return monthVal;
     }
 
     @Override
@@ -365,7 +351,8 @@ public class CM_HB_MobileFetcher extends MobileFetcher {
 
     @Override
     public File loadCaptchaCode() {
-        String url = "https://hb.ac.10086.cn/SSO/img?codeType=0&rand=" + System.currentTimeMillis();
+        String url = "http://service.cq.10086.cn/icsimage?mode=validate&width=51&height=20&temp="
+                + System.currentTimeMillis();
         return getCaptchaCodeImage(client, url);
     }
 
@@ -381,13 +368,19 @@ public class CM_HB_MobileFetcher extends MobileFetcher {
 
     @Override
     public boolean sendRandombySms() {
-        String url = "http://www.hb.10086.cn/my/account/smsRandomPass!sendSmsCheckCode.action?menuid=myDetailBill";
+        String url = "https://service.cq.10086.cn/app?service=page/myYD.OrderQuery&listener=initPage";
         try {
-            String resp = HttpUtils.executePostWithResult(client, url, null);
-            JSONObject json = JSON.parseObject(resp);
-            if ("1".equals(json.getString("result"))) {
-                return true;
-            }
+            HttpGet get = HttpUtils.get(url);
+            get.setHeader("Referer",
+                    "http://service.cq.10086.cn/app?service=page/operation.myMobileBill&listener=initPage");
+            CloseableHttpResponse response = clientWithSSL.execute(HttpUtils.get(url));
+            url = HttpUtils.getHeader(response, "Location");
+            logger.debug(url);
+            response.close();
+            get = HttpUtils.get(url);
+            String responeString = HttpUtils.executeGetWithResult(client, url);
+            logger.debug(responeString);
+            return true;
         } catch (Exception e) {
             logger.error("发送短信失败", e);
         }
@@ -408,13 +401,14 @@ public class CM_HB_MobileFetcher extends MobileFetcher {
 
     @Override
     public String getAreaSimpleName() {
-        return "hb";
+        return "cq";
     }
 
     private void logout() {
         try {
             logger.debug("退出登录");
-            HttpUtils.executeGet(client, "https://hb.ac.10086.cn/logout");
+            // HttpUtils.executeGet(client,
+            // "http://service.cq.10086.cn/app?service=page/Home&listener=exit");
         } catch (Exception e) {
             logger.error("退出登录", e);
         }

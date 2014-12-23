@@ -36,7 +36,9 @@ public class CU_BJ_MobileFetcher extends MobileFetcher {
     private static Logger logger = Logger.getLogger(CU_BJ_MobileFetcher.class);
     private CookieStore cookieStore = new BasicCookieStore();
     private CloseableHttpClient client;
-    private static final int PAGE_SIZE = NumberUtils.toInt(PropertiesUtil.getProps("cu.count.per.page"), 100);
+    private String packageName = null;
+    private static final int PAGE_SIZE = NumberUtils.toInt(PropertiesUtil.getProps("cu.count.per.page"), 1000000);
+    private static final String PATTERN = "yyyyMM";
 
     public CU_BJ_MobileFetcher() {
     }
@@ -86,7 +88,19 @@ public class CU_BJ_MobileFetcher extends MobileFetcher {
                     if (!json.getBooleanValue("isLogin")) {
                         return false;
                     }
-                    FileUtils.write(createTempFile("summary"), result, Charset.forName(HttpUtils.UTF_8), false);
+                    FileUtils.write(createTempFile(BILL_TYPE_PERSONALINFO), result, Charset.forName(HttpUtils.UTF_8),
+                            false);
+                    // TODO 获取个人信息 判断套餐
+                    JSONObject userInfo = json.getJSONObject("userInfo");
+                    String packageName = userInfo.getString("packageName");// 套餐名称
+                    if (packageName != null) {
+                        packageName = packageName.toLowerCase();
+                        if (packageName.contains("4g")) {
+                            this.packageName = "4g";
+                        } else if (packageName.contains("3g")) {
+                            this.packageName = "3g";
+                        }
+                    }
                     this.client = client;
                     return true;
                 } else {
@@ -106,8 +120,6 @@ public class CU_BJ_MobileFetcher extends MobileFetcher {
     }
 
     /**
-     * 并发请求抓账单
-     * 
      * @author zhuyuhang
      * @return
      */
@@ -116,8 +128,8 @@ public class CU_BJ_MobileFetcher extends MobileFetcher {
         this.hisBill();
         this.gsm();
         this.sms();
-        this.addvalue();
-        this.gprs();
+        // this.addvalue();
+        // this.gprs();
         this.close();
         return true;
     }
@@ -130,24 +142,10 @@ public class CU_BJ_MobileFetcher extends MobileFetcher {
      */
     @Override
     protected void personalInfo() {
-        futures.add(EXECUTOR_SERVICE.submit(new Callable<Boolean>() {
-            @Override
-            public Boolean call() throws Exception {
-                checkLogin();
-                logger.debug("获取信息总览");
-                String url = Messages.getString("ChinaUnicom.queryAnalysisLogin.url") + System.currentTimeMillis();
-                HttpPost httppost = HttpUtils.post(url);
-                try {
-                    CloseableHttpResponse response = client.execute(httppost);
-                    String resp = EntityUtils.toString(response.getEntity(), HttpUtils.UTF_8);
-                    FileUtils.write(createTempFile("personalInfo"), resp, Charset.forName(HttpUtils.UTF_8), false);
-                    response.close();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-                return true;
-            }
-        }));
+    }
+
+    private boolean is3g() {
+        return "3g".equals(this.packageName);
     }
 
     /**
@@ -158,16 +156,14 @@ public class CU_BJ_MobileFetcher extends MobileFetcher {
      */
     @Override
     protected void hisBill() {
-        Date now = new Date();
+        Date date = new Date();
         for (int i = 0; i < MOBILE_BILLS_MONTH_COUNT; i++) {
-            final Date date = DateUtils.addMonths(now, -i);
-            futures.add(EXECUTOR_SERVICE.submit(new Callable<Boolean>() {
-                @Override
-                public Boolean call() throws Exception {
-                    hisBill(date);
-                    return null;
-                }
-            }));
+            date = DateUtils.addMonths(date, -1);
+            if (is3g()) {
+                hisBill3g(date);
+            } else {
+                hisBill(date);
+            }
         }
     }
 
@@ -201,6 +197,25 @@ public class CU_BJ_MobileFetcher extends MobileFetcher {
     }
 
     /**
+     * 联通3g历史账单
+     * 
+     * @author zhuyuhang
+     * @param date
+     */
+    private void hisBill3g(Date date) {
+        try {
+            String ms = DateUtils.formatDate(date, PATTERN);
+            String url = "http://iservice.10010.com/ehallService/static/historyBiil/execute/YH102010002/QUERY_YH102010002.processData/QueryYH102010002_Data/"
+                    + ms + "/undefined?menuid=000100020001&_=" + System.currentTimeMillis();
+            String resp = HttpUtils.executePostWithResult(client, url, null);
+            FileUtils.write(createTempFile(BILL_TYPE_HISBILL + "_" + "3g"), resp, Charset.forName(HttpUtils.UTF_8),
+                    true);
+        } catch (Exception e) {
+            logger.error("查询3g历史账单失败", e);
+        }
+    }
+
+    /**
      * 通话详单
      * 
      * @author zhuyuhang
@@ -208,16 +223,14 @@ public class CU_BJ_MobileFetcher extends MobileFetcher {
      */
     @Override
     protected void gsm() {
-        Date now = new Date();
+        Date date = new Date();
         for (int i = 0; i < MOBILE_BILLS_MONTH_COUNT; i++) {
-            final Date date = DateUtils.addMonths(now, -i);
-            futures.add(EXECUTOR_SERVICE.submit(new Callable<Boolean>() {
-                @Override
-                public Boolean call() throws Exception {
-                    gsm(date);
-                    return null;
-                }
-            }));
+            if (is3g()) {
+                gsm3g(date);
+            } else {
+                gsm(date);
+            }
+            date = DateUtils.addMonths(date, -1);
         }
     }
 
@@ -283,21 +296,51 @@ public class CU_BJ_MobileFetcher extends MobileFetcher {
     }
 
     /**
+     * 3g通话详单
+     * 
+     * @author zhuyuhang
+     * @param month
+     */
+    private void gsm3g(Date month) {
+        try {
+            String url = "http://iservice.10010.com/ehallService/static/queryMonth/checkmapExtraParam/0001";
+            String ms = DateUtils.formatDate(month, PATTERN);
+            HttpUtils.executePost(client, url);
+            url = "http://iservice.10010.com/ehallService/static/queryMonth/execute2/YHgetMonths/QUERY_paramSession.processData/QUERY_paramSession_Data/000100030001/"
+                    + ms + "/undefined/undefined/undefined?menuid=000100030001&_=" + System.currentTimeMillis();
+            HttpUtils.executePost(client, url);
+            url = "http://iservice.10010.com/ehallService/view/page/mySimpleCallDetail.html";
+            Map<String, Object> params = new HashMap<>();
+            params.put("yuefen", ms);
+            params.put("startDate", DateUtils.getFirstDayOfMonth(month));
+            params.put("endDate", DateUtils.getLastDayOfMonth(month));
+            HttpUtils.executePost(client, url, params);
+            url = "http://iservice.10010.com/ehallService/static/callDetail/execute/YH102010006/Query_YH102010006.processData/QueryYH102010006_Data/true/1/"
+                    + PAGE_SIZE + "?_=" + System.currentTimeMillis();
+            HttpPost request = HttpUtils.post(url);
+            CloseableHttpResponse response = client.execute(request);
+            String resp = EntityUtils.toString(response.getEntity(), HttpUtils.UTF_8);
+            response.close();
+            FileUtils.write(createTempFile(BILL_TYPE_GSM + "_" + "3g"), resp, Charset.forName(HttpUtils.UTF_8), true);
+        } catch (Exception e) {
+            logger.error("查询3g通话详单失败", e);
+        }
+    }
+
+    /**
      * 短信详单
      * 
      * @author zhuyuhang
      */
     protected void sms() {
-        Date now = new Date();
+        Date date = new Date();
         for (int i = 0; i < MOBILE_BILLS_MONTH_COUNT; i++) {
-            final Date date = DateUtils.addMonths(now, -i);
-            futures.add(EXECUTOR_SERVICE.submit(new Callable<Boolean>() {
-                @Override
-                public Boolean call() throws Exception {
-                    sms(date);
-                    return null;
-                }
-            }));
+            if (is3g()) {
+                sms3g(date);
+            } else {
+                sms(date);
+            }
+            date = DateUtils.addMonths(date, -1);
         }
     }
 
@@ -354,6 +397,38 @@ public class CU_BJ_MobileFetcher extends MobileFetcher {
             }
         } catch (Exception e) {
             e.printStackTrace();
+        }
+    }
+
+    /**
+     * 3g短信详单
+     * 
+     * @author zhuyuhang
+     * @param month
+     */
+    private void sms3g(Date month) {
+        try {
+            String url = "http://iservice.10010.com/ehallService/static/queryMonth/checkmapExtraParam/0002";
+            String ms = DateUtils.formatDate(month, PATTERN);
+            HttpUtils.executePost(client, url);
+            url = "http://iservice.10010.com/ehallService/static/queryMonth/execute2/YHgetMonths/QUERY_paramSession.processData/QUERY_paramSession_Data/000100030002/"
+                    + ms + "/undefined/undefined/undefined?menuid=000100030002&_=" + System.currentTimeMillis();
+            HttpUtils.executePost(client, url);
+            url = "http://iservice.10010.com/ehallService/view/page/mySimpleCallDetail.html";
+            Map<String, Object> params = new HashMap<>();
+            params.put("yuefen", ms);
+            params.put("startDate", DateUtils.getFirstDayOfMonth(month));
+            params.put("endDate", DateUtils.getLastDayOfMonth(month));
+            HttpUtils.executePost(client, url, params);
+            url = "http://iservice.10010.com/ehallService/static/SMSDetail/execute/YH102010007/QUERY_YH102010007.processData/QueryYH102010007_Data/false/1/"
+                    + PAGE_SIZE + "?_=" + System.currentTimeMillis();
+            HttpPost request = HttpUtils.post(url);
+            CloseableHttpResponse response = client.execute(request);
+            String resp = EntityUtils.toString(response.getEntity(), HttpUtils.UTF_8);
+            response.close();
+            FileUtils.write(createTempFile(BILL_TYPE_SMS + "_" + "3g"), resp, Charset.forName(HttpUtils.UTF_8), true);
+        } catch (Exception e) {
+            logger.error("查询3g通话详单失败", e);
         }
     }
 
@@ -423,7 +498,7 @@ public class CU_BJ_MobileFetcher extends MobileFetcher {
                                 .getString("ChinaUnicom.callValueAdded.result.pageMap.totalPages"));
                         JSONArray result = pageMap.getJSONArray(Messages
                                 .getString("ChinaUnicom.callValueAdded.result.pageMap.result"));
-                        FileUtils.write(createTempFile("addvalue"), result.toString(),
+                        FileUtils.write(createTempFile(BILL_TYPE_ADDVALUE), result.toString(),
                                 Charset.forName(HttpUtils.UTF_8), true);
                         addvalue(date, ++pageNo, totalPages);
                     }
@@ -528,8 +603,8 @@ public class CU_BJ_MobileFetcher extends MobileFetcher {
                                 .getString("ChinaUnicom.callNetPlayRecord.result.pageMap.totalPages"));
                         JSONArray result = pageMap.getJSONArray(Messages
                                 .getString("ChinaUnicom.callNetPlayRecord.result.pageMap.result"));
-                        FileUtils.write(createTempFile("gprs"), result.toString(), Charset.forName(HttpUtils.UTF_8),
-                                true);
+                        FileUtils.write(createTempFile(BILL_TYPE_GPRS), result.toString(),
+                                Charset.forName(HttpUtils.UTF_8), true);
                         gprs(date, ++pageNo, totalPages);
                     }
                 }

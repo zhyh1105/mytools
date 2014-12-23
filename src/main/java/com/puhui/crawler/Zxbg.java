@@ -1,7 +1,7 @@
 package com.puhui.crawler;
 
 import java.io.File;
-import java.io.FileInputStream;
+import java.io.InputStream;
 import java.nio.charset.Charset;
 import java.security.KeyStore;
 import java.util.ArrayList;
@@ -37,7 +37,7 @@ public class Zxbg {
 
     public static void main(String[] args) throws Exception {
         KeyStore trustStore = KeyStore.getInstance(KeyStore.getDefaultType());
-        FileInputStream instream = new FileInputStream(new File("D:/tmp/pbccrc.store"));
+        InputStream instream = Zxbg.class.getResourceAsStream("/certs/pbccrc.store");
         try {
             trustStore.load(instream, "123456".toCharArray());
         } finally {
@@ -65,9 +65,9 @@ public class Zxbg {
         // String password = "Hxffqqve3002";
         // String tradeCode = "e93yjq";
 
-        String loginname = "lvraikkonen";
-        String password = "LvRaikkonen_0306";
-        String tradeCode = "mr9aep";
+        String loginname = "longhawk00";
+        String password = "022160Zhang";
+        String tradeCode = "5t89qs";
         formparams.add(new BasicNameValuePair("page", "1"));
         formparams.add(new BasicNameValuePair("method", "login"));
         formparams.add(new BasicNameValuePair("date", System.currentTimeMillis() + ""));
@@ -103,7 +103,8 @@ public class Zxbg {
         // get.setConfig(config);
         System.out.println(get.getURI().toString());
         response = client.execute(get);
-        FileUtils.write(new File("D:/tmp/zxbg/ls.html"), EntityUtils.toString(response.getEntity()));
+        FileUtils.write(new File("D:/tmp/zxbg/" + loginname + ".html"),
+                EntityUtils.toString(response.getEntity(), HttpUtils.UTF_8), HttpUtils.UTF_8);
         // System.out.println(EntityUtils.toString(response.getEntity()));
         response.close();
         System.out.println("抓取信用报告结束");
