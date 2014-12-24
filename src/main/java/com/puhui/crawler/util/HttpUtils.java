@@ -1,5 +1,6 @@
 package com.puhui.crawler.util;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.Charset;
@@ -15,6 +16,7 @@ import java.util.regex.Pattern;
 
 import javax.net.ssl.SSLContext;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.Header;
 import org.apache.http.HttpHost;
@@ -41,6 +43,8 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+
+import com.amos.tool.PropertiesUtil;
 
 public class HttpUtils {
     public static final String DEFAULT_USER_AGENT = "Mozilla/5.0 (Windows NT 6.3; WOW64; rv:32.0) Gecko/20100101 Firefox/33.0";
@@ -454,6 +458,21 @@ public class HttpUtils {
         }
         m.appendTail(sb);
         return sb.toString();
+    }
+
+    public static File getCaptchaCodeImage(CloseableHttpClient client, String url) {
+        try {
+            HttpGet get = HttpUtils.get(url);
+            CloseableHttpResponse response = client.execute(get);
+            File codeFile = new File(PropertiesUtil.getProps("mobile.captcha.dir"), System.currentTimeMillis() + ".jpg");
+            FileUtils.copyInputStreamToFile(response.getEntity().getContent(), codeFile);
+            response.close();
+
+            return codeFile;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 
 }

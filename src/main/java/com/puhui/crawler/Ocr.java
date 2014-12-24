@@ -6,6 +6,10 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 
+import org.apache.commons.io.FilenameUtils;
+
+import com.amos.tool.PropertiesUtil;
+
 public class Ocr {
     public static String getCodeFromImage(File image) throws Exception {
         return getCodeFromImage(image, null, false);
@@ -15,8 +19,9 @@ public class Ocr {
         if (binanyImage) {
             PreProcessImage.binanyImage(image);
         }
-        ProcessBuilder processBuilder = new ProcessBuilder("D:\\apps\\Tesseract-OCR\\tesseract", image.getName(),
-                "out", "-psm", "7", "-l", lang == null ? "eng" : lang);
+        String outfilename = FilenameUtils.getBaseName(image.getName());
+        ProcessBuilder processBuilder = new ProcessBuilder(PropertiesUtil.getProps("tesseract.cmd.location"),
+                image.getName(), outfilename, "-psm", "7", "-l", lang == null ? "eng" : lang);
         processBuilder.directory(new File(image.getParent()));
         Process process = processBuilder.start();
         BufferedReader br = new BufferedReader(new InputStreamReader(process.getInputStream()));
@@ -30,7 +35,8 @@ public class Ocr {
                 br.close();
             }
         }
-        BufferedReader fileReader = new BufferedReader(new FileReader(new File(image.getParent(), "out.txt")));
+        BufferedReader fileReader = new BufferedReader(
+                new FileReader(new File(image.getParent(), outfilename + ".txt")));
         String code = null;
         try {
             code = fileReader.readLine();

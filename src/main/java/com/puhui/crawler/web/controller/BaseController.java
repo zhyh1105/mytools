@@ -5,6 +5,7 @@ import javax.servlet.http.HttpServletRequest;
 
 import org.apache.log4j.Logger;
 
+import com.puhui.crawler.CreditReport;
 import com.puhui.crawler.mobile.MobileFetcher;
 import com.puhui.crawler.mobile.MobileFetcherMapper;
 
@@ -17,6 +18,7 @@ public class BaseController {
 
     private static final Logger logger = Logger.getLogger(BaseController.class);
     private static final String MOBILE_FETCHER_ATTR = MobileFetcher.class.getName() + ".class";
+    private static final String CREDIT_REPORT_ATTR = CreditReport.class.getName() + ".class";
     @Resource
     private MobileFetcherMapper mobileFetcherMapper;
 
@@ -64,5 +66,29 @@ public class BaseController {
 
     public void removeMobileFetcher(HttpServletRequest request) {
         request.getSession().removeAttribute(MOBILE_FETCHER_ATTR);
+    }
+
+    /**
+     * @author zhuyuhang
+     * @param request
+     * @param alwaysNew
+     *            倘session里面有 则执行其 close方法后再创建
+     * @return
+     */
+    public CreditReport getCreditReport(HttpServletRequest request, boolean alwaysNew) {
+        CreditReport result = (CreditReport) request.getSession().getAttribute(CREDIT_REPORT_ATTR);
+        if (alwaysNew && result != null) {
+            result.close();
+            result = null;
+        }
+        if (result == null) {
+            result = new CreditReport();
+            request.getSession().setAttribute(CREDIT_REPORT_ATTR, result);
+        }
+        return result;
+    }
+
+    public void removeCreditReport(HttpServletRequest request) {
+        request.getSession().removeAttribute(CREDIT_REPORT_ATTR);
     }
 }

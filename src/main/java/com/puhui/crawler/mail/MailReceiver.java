@@ -31,7 +31,8 @@ public class MailReceiver {
     private final String MAIL_SUBJECT_REGEX = PropertiesUtil.getProps("mail.subject");
     private final Pattern MAIL_FORM_PATTER = Pattern.compile(MAIL_FORM_REGEX);
     private final Pattern MAIL_SUBJECT_PATTER = Pattern.compile(MAIL_SUBJECT_REGEX);
-    private final String BANK_BILLS_DIR = PropertiesUtil.getProps("bank_bills_dir");
+    private final String BANK_BILLS_DIR = PropertiesUtil.getProps("bank.bills.dir");
+    private static final boolean RECEIVE_ALL = Boolean.valueOf(PropertiesUtil.getProps("bank.bills.receive.all"));
 
     public MailReceiver(String username, String password) throws Exception {
         this.receiveMail(username, password);
@@ -80,11 +81,16 @@ public class MailReceiver {
                 Message msg = folder.getMessage(i);
                 Date sendDate = msg.getSentDate();
                 logger.debug(i + "\t" + DateUtils.formatDate(sendDate, "yyyy-MM-dd HH:mm:ss"));
-                if (sendDate.after(date)) {
+                if (RECEIVE_ALL) {
                     processMsg(msg);
                 } else {
-                    break;
+                    if (sendDate.after(date)) {
+                        processMsg(msg);
+                    } else {
+                        break;
+                    }
                 }
+
             } catch (Exception e) {
                 logger.error(e.getMessage(), e);
             }
@@ -151,7 +157,11 @@ public class MailReceiver {
     }
 
     private File createFile(String from) {
-        return new File(BANK_BILLS_DIR, "bank_" + MailBankMapUtils.getBankNameByEmailAddress(from) + "_"
+        File dir = new File(BANK_BILLS_DIR, DateUtils.formatDate(new Date()));
+        if (!dir.exists() || !dir.isDirectory()) {
+            dir.mkdir();
+        }
+        return new File(dir, "bank_" + MailBankMapUtils.getBankNameByEmailAddress(from) + "_"
                 + DateUtils.formatDate(new Date(), "yyyyMMddHHmmssS") + ".html");
     }
 
