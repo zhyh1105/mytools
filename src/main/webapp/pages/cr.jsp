@@ -11,11 +11,28 @@
 	<form id="form">
 		<input type="hidden" value="" id="txt_captchaNeeded" />
 		<input type="hidden" value="" id="txt_randomSmsCodeNeeded"/>
-		<div>登录名：<input type="text" name="phone" value="" id="txt_phone" maxlength="11"/></div>
-		<div>密码：<input type="text" name="password" value="" id="txt_password" /></div>
-		<div style="display: none;" id="div_captcha">验证码：<input type="text" name="rnum" value="" id="txt_rnum"/><img src="" id="img_captcha" alt="验证码" onclick="changeCodeImage()"></img></div>
-		<div>查询码：<input type="text" name="tradeCode" value="" id="txt_tradeCode" /></div>
-		<div><input type="button" id="btn_submit" value="登录"></div>
+		<table>
+			<tr>
+				<td align="right">登录名：</td>
+				<td><input type="text" name="phone" value="" id="txt_phone" maxlength="11"/></td>
+			</tr>
+			<tr>
+				<td align="right">密码：</td>
+				<td><input type="password" name="password" value="" id="txt_password" /></td>
+			</tr>
+			<tr>
+				<td align="right">查询码：</td>
+				<td><input type="text" name="tradeCode" value="" id="txt_tradeCode" /></td>
+			</tr>
+			<tr style="display: none;" id="div_captcha">
+				<td align="right">验证码：</td>
+				<td><input type="text" name="rnum" value="" id="txt_rnum"/><img src="" id="img_captcha" alt="验证码" onclick="changeCodeImage()"></img></td>
+			</tr>
+			<tr>
+				<td>&nbsp;</td>
+				<td><input type="button" id="btn_submit" value="登录"></td>
+			</tr>
+		</table>
 	</form>
 	
 	<script type="text/javascript">
@@ -70,7 +87,7 @@
 			params.captchaCode = captchaCode;
 			console.log("正在登录......");
 			$.post("<%=request.getContextPath()%>/creditReport/login", params, function(data){
-				if(data == true){
+				if(data.success == true){
 					console.log("征信报告获取成功");
 				}else{
 					console.log("征信报告获取失败，请重试！！！");

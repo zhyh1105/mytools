@@ -5,15 +5,16 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 
-import com.puhui.crawler.mail.MailReceiverManager;
+import com.puhui.crawler.Result;
+import com.puhui.crawler.mail.MailReceiver;
 
 @Controller
-public class EmailController {
+@RequestMapping("/creditCardBills")
+public class CreditCardBillsController {
     @RequestMapping("/login")
     @ResponseBody
-    public boolean String(@RequestParam(required = true) String username, @RequestParam(required = true) String password) {
-        MailReceiverManager.receiveEmails(username, password);
-        return true;
+    public Result String(@RequestParam(required = true) String username, @RequestParam(required = true) String password) {
+        return new MailReceiver(username, password).receiveMail();
     }
 
 }

@@ -29,11 +29,11 @@ import org.apache.log4j.Logger;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
-import com.puhui.util.DateUtils;
-import com.puhui.util.HttpUtils;
-import com.puhui.util.ProcessUtils;
-import com.puhui.util.PropertiesUtil;
-import com.puhui.util.SSLUtils;
+import com.amos.tool.PropertiesUtil;
+import com.puhui.crawler.util.DateUtils;
+import com.puhui.crawler.util.HttpUtils;
+import com.puhui.crawler.util.ProcessUtils;
+import com.puhui.crawler.util.SSLUtils;
 
 public class CM_10086 {
     private Logger logger = Logger.getLogger(CM_10086.class);

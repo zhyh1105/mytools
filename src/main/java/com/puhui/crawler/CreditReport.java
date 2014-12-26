@@ -61,7 +61,7 @@ public class CreditReport {
      *            查询码
      * @throws Exception
      */
-    public void loadCreditReport(String loginname, String password, String tradeCode) throws Exception {
+    public void loadCreditReport(String loginname, String password, String tradeCode) {
         loadCreditReport(loginname, password, tradeCode, null);
     }
 
@@ -77,9 +77,9 @@ public class CreditReport {
      *            图片验证码
      * @throws Exception
      */
-    public boolean loadCreditReport(String loginname, String password, String tradeCode, String captchaCode) {
+    public Result loadCreditReport(String loginname, String password, String tradeCode, String captchaCode) {
         if (retryTimes > 5) {
-            return false;
+            return new Result(false, "重试5次后依然没能获取");
         } else {
             logger.error(loginname + "，第[" + retryTimes + "]次尝试获取");
         }
@@ -122,7 +122,7 @@ public class CreditReport {
             Elements els = doc.select("input[name=org.apache.struts.taglib.html.TOKEN]");
             String token = null;
             if (!els.isEmpty()) {
-                token = (els.get(0).attr("value"));
+                token = els.get(0).attr("value");
             }
             logger.debug("抓取token结束。值:" + token);
             logger.debug("抓取信用报告开始");
@@ -133,7 +133,7 @@ public class CreditReport {
             desc = new File(PropertiesUtil.getProps("credit.report.dir"), loginname + ".html");
             FileUtils.write(desc, EntityUtils.toString(response.getEntity(), HttpUtils.UTF_8), HttpUtils.UTF_8);
             if (desc.length() >= 8 * 1024) {
-                return true;
+                return new Result(true, "获取成功");
             } else {
                 desc = null;
             }
@@ -143,11 +143,11 @@ public class CreditReport {
             logger.error(e.getMessage(), e);
         }
         if (desc == null) {
-            if (loadCreditReport(loginname, password, tradeCode, null)) {
-                return true;
+            if (loadCreditReport(loginname, password, tradeCode, null).isSuccess()) {
+                return new Result(true, "获取成功");
             }
         }
-        return false;
+        return new Result(false, "获取失败");
     }
 
     public void close() {

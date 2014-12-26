@@ -65,48 +65,50 @@ public class CU_BJ_MobileFetcher extends MobileFetcher {
         HttpGet get = HttpUtils.get(url);
         try {
             CloseableHttpResponse response = client.execute(get);
-            if (response.getStatusLine().getStatusCode() == 200) {
-                String result = EntityUtils.toString(response.getEntity(), HttpUtils.UTF_8);
+            String result = EntityUtils.toString(response.getEntity(), HttpUtils.UTF_8);
+            response.close();
+            JSONObject json = JSON.parseObject(result);
+            String resultCode = json.getString(Messages.getString("ChinaUnicom.login.result.resultCode"));
+            if (Messages.getString("ChinaUnicom.login.result.resultCode.success").equals(resultCode)) {
+                logger.info("登录成功[" + phone + "," + password + "]");
+                url = "http://iservice.10010.com/e3/static/common/info?_=" + System.currentTimeMillis();
+                HttpUtils.executePost(client, url);
+                url = "http://iservice.10010.com/e3/static/header";
+                HttpUtils.executePost(client, url);
+                url = "http://iservice.10010.com/e3/static/check/checklogin/?_" + System.currentTimeMillis();
+                HttpPost post = HttpUtils.post(url);
+                response = client.execute(post);
+                result = EntityUtils.toString(response.getEntity(), HttpUtils.UTF_8);
                 response.close();
-                JSONObject json = JSON.parseObject(result);
-                String resultCode = json.getString(Messages.getString("ChinaUnicom.login.result.resultCode"));
-                if (Messages.getString("ChinaUnicom.login.result.resultCode.success").equals(resultCode)) {
-                    logger.info("登录成功[" + phone + "," + password + "]");
-                    url = "http://iservice.10010.com/e3/static/common/info?_=" + System.currentTimeMillis();
-                    HttpUtils.executePost(client, url);
-                    url = "http://iservice.10010.com/e3/static/header";
-                    HttpUtils.executePost(client, url);
-                    url = "http://iservice.10010.com/e3/static/check/checklogin/?_" + System.currentTimeMillis();
-                    HttpPost post = HttpUtils.post(url);
-                    response = client.execute(post);
-                    result = EntityUtils.toString(response.getEntity(), HttpUtils.UTF_8);
-                    response.close();
-                    json = JSON.parseObject(result);
-                    if (!json.getBooleanValue("isLogin")) {
-                        return false;
-                    }
-                    FileUtils.write(createTempFile(BILL_TYPE_PERSONALINFO), result, Charset.forName(HttpUtils.UTF_8),
-                            false);
-                    // TODO 获取个人信息 判断套餐
-                    JSONObject userInfo = json.getJSONObject("userInfo");
-                    String packageName = userInfo.getString("packageName");// 套餐名称
-                    if (packageName != null) {
-                        packageName = packageName.toLowerCase();
-                        if (packageName.contains("4g")) {
-                            this.packageName = "4g";
-                        } else if (packageName.contains("3g")) {
-                            this.packageName = "3g";
-                        }
-                    }
-                    this.client = client;
-                    return true;
-                } else {
-                    client.close();
-                    logger.info("登录失败[" + phone + "," + password + ", " + result + "]");
+                json = JSON.parseObject(result);
+                if (!json.getBooleanValue("isLogin")) {
+                    return false;
                 }
+                FileUtils
+                        .write(createTempFile(BILL_TYPE_PERSONALINFO), result, Charset.forName(HttpUtils.UTF_8), false);
+                // TODO 获取个人信息 判断套餐
+                JSONObject userInfo = json.getJSONObject("userInfo");
+                String packageName = userInfo.getString("packageName");// 套餐名称
+                if (packageName != null) {
+                    packageName = packageName.toLowerCase();
+                    if (packageName.contains("4g")) {
+                        this.packageName = "4g";
+                    } else if (packageName.contains("3g")) {
+                        this.packageName = "3g";
+                    }
+                }
+                this.client = client;
+                return true;
+            } else {
+                logger.info("登录失败[" + phone + "," + password + ", " + result + "]");
             }
         } catch (Exception e) {
             logger.error(e.getMessage(), e);
+        } finally {
+            try {
+                client.close();
+            } catch (IOException e) {
+            }
         }
         return false;
     }
@@ -628,7 +630,7 @@ public class CU_BJ_MobileFetcher extends MobileFetcher {
     }
 
     @Override
-    public boolean checkCaptchaCode() {
+    public boolean checkCaptchaCode(String captchaCode) {
         return false;
     }
 
@@ -671,25 +673,21 @@ public class CU_BJ_MobileFetcher extends MobileFetcher {
 
     @Override
     protected void mzlog() {
-        // TODO Auto-generated method stub
 
     }
 
     @Override
     protected void rc() {
-        // TODO Auto-generated method stub
 
     }
 
     @Override
     protected void mon() {
-        // TODO Auto-generated method stub
 
     }
 
     @Override
     protected void currFee() {
-        // TODO Auto-generated method stub
 
     }
 

@@ -62,7 +62,7 @@ public class CT_BJ_MobileFetcher extends MobileFetcher {
     }
 
     @Override
-    public boolean checkCaptchaCode() {
+    public boolean checkCaptchaCode(String captchaCode) {
         try {
             String url = "http://www.189.cn/dqmh/chongzhi.do?method=queryPhoneNumberAccount";
             Map<String, Object> params = new HashMap<>();
@@ -91,7 +91,7 @@ public class CT_BJ_MobileFetcher extends MobileFetcher {
     public boolean login(String phone, String password, String rnum) {
         super.login(phone, password, rnum);
         try {
-            return this.prepare() && this.checkCaptchaCode() && this.login();
+            return this.prepare() && this.checkCaptchaCode(rnum) && this.login();
         } catch (Exception e) {
             logger.error(e.getMessage(), e);
         }

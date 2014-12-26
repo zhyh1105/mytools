@@ -44,7 +44,7 @@ public class CT_HN_MobileFetcher extends MobileFetcher {
     }
 
     @Override
-    public boolean checkCaptchaCode() {
+    public boolean checkCaptchaCode(String captchaCode) {
         return true;
     }
 

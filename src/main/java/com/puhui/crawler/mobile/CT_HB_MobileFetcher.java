@@ -82,7 +82,7 @@ public class CT_HB_MobileFetcher extends MobileFetcher {
     }
 
     @Override
-    public boolean checkCaptchaCode() {
+    public boolean checkCaptchaCode(String captchaCode) {
         try {
             return true;
         } catch (Exception e) {

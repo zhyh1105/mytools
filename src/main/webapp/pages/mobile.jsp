@@ -4,24 +4,45 @@
 <html>
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-<title>获取账单</title>
+<title>手机账单</title>
 <script type="text/javascript" src="<%=request.getContextPath()%>/static/js/jquery-1.8.0.js"></script>
 </head>
 <body>
 	<form id="form">
 		<input type="hidden" value="" id="txt_captchaNeeded" />
 		<input type="hidden" value="" id="txt_randomSmsCodeNeeded"/>
-		<div>手机号：<input type="text" name="phone" value="" id="txt_phone" maxlength="11"/></div>
-		<div>密码：<input type="text" name="password" value="" id="txt_password" /></div>
-		<div style="display: none;" id="div_captcha">验证码：<input type="text" name="rnum" value="" id="txt_rnum"/><img src="" id="img_captcha" alt="验证码" onclick="changeCodeImage()"></img></div>
-		<div><input type="button" id="btn_submit" value="登录"></div>
+		<table>
+			<tr>
+				<td align="right">手机号：</td>
+				<td><input type="text" name="phone" value="" id="txt_phone" maxlength="11"/></td>
+			</tr>
+			<tr>
+				<td align="right">密码：</td>
+				<td><input type="text" name="password" value="" id="txt_password" /></td>
+			</tr>
+			<tr style="display: none;" id="div_captcha">
+				<td align="right">验证码：</td>
+				<td><input type="text" name="rnum" value="" id="txt_rnum"/><img src="" id="img_captcha" alt="验证码" onclick="changeCodeImage()"></img></td>
+			</tr>
+			<tr>
+				<td align="right"> </td>
+				<td><input type="button" id="btn_submit" value="登录"></td>
+			</tr>
+		</table>
 	</form>
 	
 	<div><br></div>
-		
 	<form id="form1" style="display: none;">
-		<div>輸入機驗證碼：<input type="text" name="phone" value="" id="txt_random_code"/>&nbsp;<input type="button" value="發送" id="btn_send_random_code"/><span id="info_send_random_code"></span></div>
-		<div><input type="button" id="btn_getBills" value="獲取賬單"></div>
+		<table>
+			<tr>
+				<td align="right">輸入機驗證碼：</td>
+				<td><input type="text" name="phone" value="" id="txt_random_code"/>&nbsp;<input type="button" value="获取" id="btn_send_random_code"/><span id="info_send_random_code"></span></td>
+			</tr>
+			<tr>
+				<td align="right"> </td>
+				<td><input type="button" id="btn_getBills" value="獲取賬單"></td>
+			</tr>
+		</table>
 	</form>
 	
 	<script type="text/javascript">

@@ -146,7 +146,7 @@ public abstract class MobileFetcher {
      * @author zhuyuhang
      * @return
      */
-    public abstract boolean checkCaptchaCode();
+    public abstract boolean checkCaptchaCode(String captchaCode);
 
     /**
      * 登錄

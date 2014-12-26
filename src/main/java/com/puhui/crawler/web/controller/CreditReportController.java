@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 
 import com.amos.tool.PropertiesUtil;
 import com.puhui.crawler.CreditReport;
+import com.puhui.crawler.Result;
 
 @Controller
 @RequestMapping("/creditReport")
@@ -74,12 +75,12 @@ public class CreditReportController extends BaseController {
      */
     @RequestMapping("/login")
     @ResponseBody
-    public boolean login(HttpServletRequest request, @RequestParam(required = true) String loginname,
+    public Result login(HttpServletRequest request, @RequestParam(required = true) String loginname,
             @RequestParam(required = true) String password, @RequestParam(required = true) String tradeCode,
             @RequestParam(required = false) String captchaCode) {
         CreditReport creditReport = getCreditReport(request, false);
         if (creditReport == null) {
-            return false;
+            return new Result(false, "获取失败");
         }
         try {
             return creditReport.loadCreditReport(loginname, password, tradeCode, captchaCode);
