@@ -34,7 +34,6 @@ import com.puhui.crawler.util.HttpUtils;
  */
 public class CT_BJ_MobileFetcher extends MobileFetcher {
     private Logger logger = Logger.getLogger(CT_BJ_MobileFetcher.class);
-    private String ssoSessionID;
     private CloseableHttpClient client;
     private static final String PATTERN_10086 = "yyyyMM";
     private CookieStore cookieStore = new BasicCookieStore();
@@ -151,6 +150,8 @@ public class CT_BJ_MobileFetcher extends MobileFetcher {
         try {
             gsm();
             sms();
+            gprs();
+            addvalue();
             hisBill();
             personalInfo();
         } finally {
@@ -430,7 +431,11 @@ public class CT_BJ_MobileFetcher extends MobileFetcher {
 
     @Override
     protected void addvalue() {
-
+        Date date = new Date();
+        for (int i = 0; i < MOBILE_BILLS_MONTH_COUNT; i++) {
+            commonFee(date, "4", BILL_TYPE_ADDVALUE);
+            date = DateUtils.addMonths(date, -1);
+        }
     }
 
     @Override
@@ -440,7 +445,11 @@ public class CT_BJ_MobileFetcher extends MobileFetcher {
 
     @Override
     protected void gprs() {
-
+        Date date = new Date();
+        for (int i = 0; i < MOBILE_BILLS_MONTH_COUNT; i++) {
+            commonFee(date, "3", BILL_TYPE_GPRS);
+            date = DateUtils.addMonths(date, -1);
+        }
     }
 
     @Override

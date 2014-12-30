@@ -29,7 +29,6 @@ import com.puhui.crawler.util.HttpUtils;
  */
 public class CM_HN_MobileFetcher extends MobileFetcher {
     private Logger logger = Logger.getLogger(CM_HN_MobileFetcher.class);
-    private String ssoSessionID;
     private CloseableHttpClient client;
     // private CloseableHttpClient clientWithSSL;
     // private static String storePasswd = "123456";
@@ -118,6 +117,11 @@ public class CM_HN_MobileFetcher extends MobileFetcher {
         this.hisBill();
         this.gsm();
         this.sms();
+        this.gprs();
+        this.addvalue();
+        this.mon();
+        this.rc();
+        this.mzlog();
         this.close();
     }
 

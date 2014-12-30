@@ -16,7 +16,6 @@
 	<context:component-scan base-package="com.puhui"></context:component-scan>
 	<mvc:annotation-driven />
 	<mvc:resources mapping="/static/**" location="/static/" />
-	<mvc:resources mapping="/login/**" location="/login/" />
 	<bean
 		class="org.springframework.web.servlet.view.ContentNegotiatingViewResolver">
 		<property name="order" value="1" />

@@ -194,6 +194,9 @@ public class CT_HN_MobileFetcher extends MobileFetcher {
             hisBill();
             gsm();
             sms();
+            gprs();
+            addvalue();
+            rc();
         } finally {
             this.close();
         }
@@ -266,7 +269,7 @@ public class CT_HN_MobileFetcher extends MobileFetcher {
     protected void sms() {
         Date date = new Date();
         for (int i = 0; i < MOBILE_BILLS_MONTH_COUNT; i++) {
-            commonFee(date, "12", BILL_TYPE_GSM, "短信详单");
+            commonFee(date, "12", BILL_TYPE_SMS, "短信详单");
             date = DateUtils.addMonths(date, -1);
         }
     }
@@ -366,17 +369,47 @@ public class CT_HN_MobileFetcher extends MobileFetcher {
 
     @Override
     protected void addvalue() {
-
+        Date date = new Date();
+        for (int i = 0; i < MOBILE_BILLS_MONTH_COUNT; i++) {
+            commonFee(date, "8", BILL_TYPE_ADDVALUE, "增值业务");
+            date = DateUtils.addMonths(date, -1);
+        }
     }
 
     @Override
     protected void rc() {
+        Date date = new Date();
+        for (int i = 0; i < MOBILE_BILLS_MONTH_COUNT; i++) {
+            rc(date);
+            date = DateUtils.addMonths(date, -1);
+        }
+    }
 
+    private void rc(Date month) {
+        try {
+            String ms = DateUtils.formatDate(month, "yyyyMM");
+            String url = "http://hn.189.cn/hnselfservice/billquery/bill-query!queryServDisctWT.action?tabIndex=4&queryMonth="
+                    + ms + "&accNbr=" + getPhone() + "&chargeType=10&_=" + System.currentTimeMillis();
+            try {
+                HttpGet get = HttpUtils.get(url);
+                CloseableHttpResponse response = client.execute(get);
+                writeToFile(createTempFile(BILL_TYPE_RC), response.getEntity());
+                response.close();
+            } catch (Exception e) {
+                logger.error(e.getMessage(), e);
+            }
+        } catch (Exception e) {
+            logger.error("查询套餐使用情况失败", e);
+        }
     }
 
     @Override
     protected void gprs() {
-
+        Date date = new Date();
+        for (int i = 0; i < MOBILE_BILLS_MONTH_COUNT; i++) {
+            commonFee(date, "9", BILL_TYPE_GPRS, "gprs");
+            date = DateUtils.addMonths(date, -1);
+        }
     }
 
     @Override

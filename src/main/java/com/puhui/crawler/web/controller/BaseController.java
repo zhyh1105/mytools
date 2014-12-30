@@ -91,4 +91,10 @@ public class BaseController {
     public void removeCreditReport(HttpServletRequest request) {
         request.getSession().removeAttribute(CREDIT_REPORT_ATTR);
     }
+
+    public String getBasePath(HttpServletRequest request) {
+        String path = request.getContextPath();
+        String basePath = request.getScheme() + "://" + request.getServerName() + ":" + request.getServerPort() + path;
+        return basePath;
+    }
 }

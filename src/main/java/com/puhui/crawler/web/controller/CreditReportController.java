@@ -16,16 +16,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 
-import com.amos.tool.PropertiesUtil;
 import com.puhui.crawler.CreditReport;
-import com.puhui.crawler.Result;
+import com.puhui.crawler.Response;
 
 @Controller
 @RequestMapping("/creditReport")
 public class CreditReportController extends BaseController {
-    private static final boolean isCaptchaNeeded = Boolean.valueOf(
-            PropertiesUtil.getProps("credit.report.is.captcha.needed")).booleanValue();
-
     /**
      * 獲取驗證碼圖片
      * 
@@ -38,7 +34,7 @@ public class CreditReportController extends BaseController {
     @RequestMapping("/isCaptchaNeeded")
     @ResponseBody
     public boolean isCaptchaNeeded() {
-        return isCaptchaNeeded;
+        return true;
     }
 
     /**
@@ -75,12 +71,12 @@ public class CreditReportController extends BaseController {
      */
     @RequestMapping("/login")
     @ResponseBody
-    public Result login(HttpServletRequest request, @RequestParam(required = true) String loginname,
+    public Response login(HttpServletRequest request, @RequestParam(required = true) String loginname,
             @RequestParam(required = true) String password, @RequestParam(required = true) String tradeCode,
             @RequestParam(required = false) String captchaCode) {
         CreditReport creditReport = getCreditReport(request, false);
         if (creditReport == null) {
-            return new Result(false, "获取失败");
+            return new Response(false, "获取失败");
         }
         try {
             return creditReport.loadCreditReport(loginname, password, tradeCode, captchaCode);

@@ -77,9 +77,9 @@ public class CreditReport {
      *            图片验证码
      * @throws Exception
      */
-    public Result loadCreditReport(String loginname, String password, String tradeCode, String captchaCode) {
+    public Response loadCreditReport(String loginname, String password, String tradeCode, String captchaCode) {
         if (retryTimes > 5) {
-            return new Result(false, "重试5次后依然没能获取");
+            return new Response(false, "重试5次后依然没能获取");
         } else {
             logger.error(loginname + "，第[" + retryTimes + "]次尝试获取");
         }
@@ -133,7 +133,7 @@ public class CreditReport {
             desc = new File(PropertiesUtil.getProps("credit.report.dir"), loginname + ".html");
             FileUtils.write(desc, EntityUtils.toString(response.getEntity(), HttpUtils.UTF_8), HttpUtils.UTF_8);
             if (desc.length() >= 8 * 1024) {
-                return new Result(true, "获取成功");
+                return new Response(true, "获取成功");
             } else {
                 desc = null;
             }
@@ -144,10 +144,10 @@ public class CreditReport {
         }
         if (desc == null) {
             if (loadCreditReport(loginname, password, tradeCode, null).isSuccess()) {
-                return new Result(true, "获取成功");
+                return new Response(true, "获取成功");
             }
         }
-        return new Result(false, "获取失败");
+        return new Response(false, "获取失败");
     }
 
     public void close() {
@@ -161,9 +161,9 @@ public class CreditReport {
     }
 
     public static void main(String[] args) throws Exception {
-        String loginname = "";
-        String password = "";
-        String tradeCode = "";
+        String loginname = "lijun0439";
+        String password = "Lijun7602";
+        String tradeCode = "8rsjjj";
         new CreditReport().loadCreditReport(loginname, password, tradeCode);
     }
 }

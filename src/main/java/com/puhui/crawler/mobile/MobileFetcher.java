@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -22,6 +23,7 @@ import org.apache.http.util.EntityUtils;
 import org.apache.log4j.Logger;
 
 import com.amos.tool.PropertiesUtil;
+import com.puhui.crawler.util.DateUtils;
 import com.puhui.crawler.util.HttpUtils;
 
 /**
@@ -33,7 +35,8 @@ public abstract class MobileFetcher {
     public static final ExecutorService EXECUTOR_SERVICE = Executors.newCachedThreadPool();
     protected final List<Future<Boolean>> futures = new ArrayList<>();
     private static final Logger logger = Logger.getLogger(MobileFetcher.class);
-    protected static final int PAGE_SIZE = NumberUtils.toInt(PropertiesUtil.getProps("cu.count.per.page"), 1000000);
+    protected static final int PAGE_SIZE = NumberUtils.toInt(PropertiesUtil.getProps("mobile.bills.count.per.page"),
+            100000);
     protected static final int MOBILE_BILLS_MONTH_COUNT = NumberUtils.toInt(
             PropertiesUtil.getProps("mobile.bills.month.count"), 6);
     /**
@@ -110,12 +113,32 @@ public abstract class MobileFetcher {
     public abstract boolean hasCaptcha();
 
     /**
+     * 是否含有二次图片验证码，即登录后获取随机短信之前
+     * 
+     * @author zhuyuhang
+     * @return
+     */
+    public boolean hasSecondCaptcha() {
+        return false;
+    }
+
+    /**
      * 獲取驗證碼圖片
      * 
      * @author zhuyuhang
      * @return
      */
     public abstract File loadCaptchaCode();
+
+    /**
+     * 二次图片验证码，即登录后获取随机短信之前
+     * 
+     * @author zhuyuhang
+     * @return
+     */
+    public File loadSencondCaptchaCode() {
+        return null;
+    }
 
     /**
      * 获取登录验证码图片
@@ -149,6 +172,17 @@ public abstract class MobileFetcher {
     public abstract boolean checkCaptchaCode(String captchaCode);
 
     /**
+     * 二次图片验证
+     * 
+     * @author zhuyuhang
+     * @param captchaCode
+     * @return
+     */
+    public boolean checkSecondCaptchaCode(String captchaCode) {
+        return true;
+    }
+
+    /**
      * 登錄
      * 
      * @author zhuyuhang
@@ -165,7 +199,7 @@ public abstract class MobileFetcher {
     }
 
     /**
-     * 是否含有二次隨機短信驗證碼
+     * 登录后是否含有随机短信验证码
      * 
      * @author zhuyuhang
      * @return
@@ -173,7 +207,7 @@ public abstract class MobileFetcher {
     public abstract boolean hasRandomcode();
 
     /**
-     * 發送隨機短信碼
+     * 发送随机短信验证码
      * 
      * @author zhuyuhang
      * @return
@@ -181,7 +215,7 @@ public abstract class MobileFetcher {
     public abstract boolean sendRandombySms();
 
     /**
-     * 驗證隨機短信碼
+     * 验证随机短信验证码
      * 
      * @author zhuyuhang
      * @param randomCode
@@ -190,7 +224,7 @@ public abstract class MobileFetcher {
     public abstract boolean validateRandomcode(String randomCode);
 
     /**
-     * 獲取賬單
+     * 获取账单
      * 
      * @author zhuyuhang
      * @return
@@ -199,13 +233,23 @@ public abstract class MobileFetcher {
 
     protected File createTempFile(String type) {
         String billsDir = PropertiesUtil.getProps("mobile.bills.dir");
-        File file = new File(billsDir, this.phone);
+        File file = new File(billsDir, DateUtils.formatDate(new Date(), "yyyyMMdd"));
         if (!file.exists() || !file.isDirectory()) {
             file.mkdir();
         }
-        // 185500492821_CU_BJ_type.html
-        String name = getPhone() + "_" + getIspSimpleName() + "_" + getAreaSimpleName() + "_" + type + "_"
-                + System.currentTimeMillis() + ".html";
+        file = new File(file, this.phone);
+        if (!file.exists() || !file.isDirectory()) {
+            file.mkdir();
+        }
+        // 185500492821_cu_bj_type_System.currentTimeMillis().html
+        // 185500492821_cu_bj_type.3g.System.currentTimeMillis().html
+        String name = null;
+        if (getIspSimpleName().equals(ISP_CU)) {
+            name = getPhone() + "_" + getIspSimpleName() + "_" + type + "_" + System.currentTimeMillis() + ".html";
+        } else {
+            name = getPhone() + "_" + getIspSimpleName() + "_" + getAreaSimpleName() + "_" + type + "_"
+                    + System.currentTimeMillis() + ".html";
+        }
         name = name.toLowerCase();
         file = new File(file, name);
         return file;
@@ -279,7 +323,7 @@ public abstract class MobileFetcher {
     }
 
     /**
-     * 獲取隨機碼
+     * 获取随机短信验证码
      * 
      * @author zhuyuhang
      * @return
@@ -289,7 +333,7 @@ public abstract class MobileFetcher {
     }
 
     /**
-     * 設置隨機碼
+     * 設置随机短信验证码
      * 
      * @author zhuyuhang
      * @param randomCode

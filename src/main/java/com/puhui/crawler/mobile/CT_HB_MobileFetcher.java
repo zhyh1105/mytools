@@ -39,7 +39,7 @@ public class CT_HB_MobileFetcher extends MobileFetcher {
     private static final String PATTERN_10086 = "yyyyMM";
     private CookieStore cookieStore = new BasicCookieStore();
     private static SSLConnectionSocketFactory sscsf = SSLUtils.createSSLConnectionSocketFactory(
-            CM_HB_MobileFetcher.class.getResourceAsStream("/certs/service.cq.10086.cn.keystore"), storePasswd);
+            CM_HB_MobileFetcher.class.getResourceAsStream("/certs/uam.ct10000.com.keystore"), storePasswd);
     private String cityCode = null;
     private static final Map<String, Object> CITY_NAME_HOLDER = new HashMap<>();
     static {
@@ -405,20 +405,9 @@ public class CT_HB_MobileFetcher extends MobileFetcher {
     protected void sms() {
         Date date = new Date();
         for (int i = 0; i < MOBILE_BILLS_MONTH_COUNT; i++) {
-            sms(date);
+            commonFee(date, "3", BILL_TYPE_SMS, "短信详单");
             date = DateUtils.addMonths(date, -1);
         }
-    }
-
-    /**
-     * 短信详单
-     * 
-     * @author zhuyuhang
-     * @throws ClientProtocolException
-     * @throws IOException
-     */
-    private void sms(Date month) {
-        commonFee(month, "3", BILL_TYPE_SMS, "短信详单");
     }
 
     /**
@@ -515,20 +504,25 @@ public class CT_HB_MobileFetcher extends MobileFetcher {
 
     @Override
     protected void addvalue() {
-        // TODO Auto-generated method stub
-
+        Date date = new Date();
+        for (int i = 0; i < MOBILE_BILLS_MONTH_COUNT; i++) {
+            commonFee(date, "4", BILL_TYPE_ADDVALUE, "增值业务");
+            date = DateUtils.addMonths(date, -1);
+        }
     }
 
     @Override
     protected void rc() {
-        // TODO Auto-generated method stub
 
     }
 
     @Override
     protected void gprs() {
-        // TODO Auto-generated method stub
-
+        Date date = new Date();
+        for (int i = 0; i < MOBILE_BILLS_MONTH_COUNT; i++) {
+            commonFee(date, "2", BILL_TYPE_GPRS, "上网流量");
+            date = DateUtils.addMonths(date, -1);
+        }
     }
 
     @Override

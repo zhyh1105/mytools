@@ -32,7 +32,6 @@ import com.puhui.crawler.util.SSLUtils;
 public class CM_CQ_MobileFetcher extends MobileFetcher {
     private Logger logger = Logger.getLogger(CM_CQ_MobileFetcher.class);
     private CloseableHttpClient client;
-    private CloseableHttpClient clientWithSSL;
     private static String storePasswd = "123456";
     private static final String PATTERN_10086 = "yyyyMM";
     private CookieStore cookieStore = new BasicCookieStore();
@@ -44,7 +43,7 @@ public class CM_CQ_MobileFetcher extends MobileFetcher {
 
     public CM_CQ_MobileFetcher() {
         this.client = HttpUtils.getHttpClient(true, cookieStore);
-        this.clientWithSSL = HttpUtils.getHttpClient(sscsf, cookieStore);
+        // this.clientWithSSL = HttpUtils.getHttpClient(true, cookieStore);
     }
 
     @Override
@@ -132,6 +131,9 @@ public class CM_CQ_MobileFetcher extends MobileFetcher {
             // super.submitBillTasks();
             gsm();
             sms();
+            addvalue();
+            rc();
+            gprs();
             hisBill();
             personalInfo();
             this.close();
@@ -248,16 +250,14 @@ public class CM_CQ_MobileFetcher extends MobileFetcher {
 
     @Override
     protected void mzlog() {
-        // TODO Auto-generated method stub
 
     }
 
     @Override
     protected void addvalue() {
-        // TODO Auto-generated method stub
         Date date = new Date();
         for (int i = 0; i < MOBILE_BILLS_MONTH_COUNT; i++) {
-            // commonFee(date, "13", BILL_TYPE_ADDVALUE, "增值业务扣费记录");
+            commonFee(date, "13", BILL_TYPE_ADDVALUE, "增值业务扣费记录");
             date = DateUtils.addMonths(date, -1);
         }
     }
@@ -266,7 +266,7 @@ public class CM_CQ_MobileFetcher extends MobileFetcher {
     protected void rc() {
         Date date = new Date();
         for (int i = 0; i < MOBILE_BILLS_MONTH_COUNT; i++) {
-            // commonFee(date, "9", BILL_TYPE_RC, "套餐及固定费详单");
+            commonFee(date, "9", BILL_TYPE_RC, "套餐及固定费详单");
             date = DateUtils.addMonths(date, -1);
         }
     }
@@ -275,7 +275,7 @@ public class CM_CQ_MobileFetcher extends MobileFetcher {
     protected void gprs() {
         Date date = new Date();
         for (int i = 0; i < MOBILE_BILLS_MONTH_COUNT; i++) {
-            // commonFee(date, "11", BILL_TYPE_GPRS, "上网详单");
+            commonFee(date, "11", BILL_TYPE_GPRS, "上网详单");
             date = DateUtils.addMonths(date, -1);
         }
     }
@@ -284,14 +284,13 @@ public class CM_CQ_MobileFetcher extends MobileFetcher {
     protected void mon() {
         Date date = new Date();
         for (int i = 0; i < MOBILE_BILLS_MONTH_COUNT; i++) {
-            // commonFee(date, "14", BILL_TYPE_MON, "代收业务扣费记录");
+            commonFee(date, "14", BILL_TYPE_MON, "代收业务扣费记录");
             date = DateUtils.addMonths(date, -1);
         }
     }
 
     @Override
     protected void currFee() {
-        // TODO Auto-generated method stub
 
     }
 
@@ -373,7 +372,7 @@ public class CM_CQ_MobileFetcher extends MobileFetcher {
             HttpGet get = HttpUtils.get(url);
             get.setHeader("Referer",
                     "http://service.cq.10086.cn/app?service=page/operation.myMobileBill&listener=initPage");
-            CloseableHttpResponse response = clientWithSSL.execute(HttpUtils.get(url));
+            CloseableHttpResponse response = client.execute(HttpUtils.get(url));
             url = HttpUtils.getHeader(response, "Location");
             logger.debug(url);
             response.close();

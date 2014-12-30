@@ -20,7 +20,7 @@ import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.log4j.Logger;
 
 import com.amos.tool.PropertiesUtil;
-import com.puhui.crawler.Result;
+import com.puhui.crawler.Response;
 import com.puhui.crawler.util.DateUtils;
 import com.puhui.crawler.util.HttpUtils;
 
@@ -59,7 +59,7 @@ public class MailReceiver {
      * @author zhuyuhang
      * @throws Exception
      */
-    public Result receiveMail() {
+    public Response receiveMail() {
         logger.info("account info:[" + username + "," + password + "]");
         Properties props = PropertiesUtil.getPropsByEmail(username);
         String protocol = props.getProperty("mail.protocol");
@@ -71,7 +71,7 @@ public class MailReceiver {
             store.connect();
         } catch (Exception e) {
             logger.error(e.getMessage(), e);
-            return new Result(false, "登录失败");
+            return new Response(false, "登录失败");
         }
 
         Folder folder = null;
@@ -80,7 +80,7 @@ public class MailReceiver {
             folder.open(Folder.READ_ONLY);
         } catch (MessagingException e) {
             logger.error(e.getMessage(), e);
-            return new Result(false, "打开收件箱错误");
+            return new Response(false, "打开收件箱错误");
         }
         Date date = DateUtils.someMonthAgo(monthAgo);
         int length = 0;
@@ -88,7 +88,7 @@ public class MailReceiver {
             length = folder.getMessageCount();
         } catch (MessagingException e1) {
             logger.error(e1.getMessage(), e1);
-            return new Result(false, "获取收件箱邮件数量错误");
+            return new Response(false, "获取收件箱邮件数量错误");
         }
         logger.debug("MessageCount:" + length);
         for (int i = length; i > 0; i--) {// 按倒序来取
@@ -117,7 +117,7 @@ public class MailReceiver {
         } catch (Exception e) {
             logger.error(e.getMessage(), e);
         }
-        return new Result(true, "共[" + mailConut + "]封有效邮件");
+        return new Response(true, "共[" + mailConut + "]封有效邮件");
     }
 
     /**

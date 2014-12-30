@@ -1,6 +1,7 @@
 package com.puhui.crawler.util;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.log4j.Logger;
 
 import com.alibaba.fastjson.JSON;
 import com.puhui.crawler.mobile.MobileInfo;
@@ -11,6 +12,8 @@ import com.puhui.crawler.mobile.MobileInfo;
  * @author zhuyuhang
  */
 public class MobileInfoFetcher {
+    private static final Logger logger = Logger.getLogger(MobileInfoFetcher.class);
+
     public static MobileInfo getMobileInfo(String phone) {
         try {
             String result = HttpUtils.executeGetWithResult(HttpUtils.getHttpClient(),
@@ -22,7 +25,7 @@ public class MobileInfoFetcher {
             }
             return mi;
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
         }
         return new MobileInfo();
     }

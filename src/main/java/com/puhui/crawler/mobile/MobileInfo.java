@@ -3,6 +3,7 @@ package com.puhui.crawler.mobile;
 public class MobileInfo {
     private boolean validate = false;
     private boolean captchaNeeded;
+    private boolean secondCaptchaNeeded;
     private boolean randomSmsCodeNeeded;
     private String mts;
     private String province;
@@ -210,6 +211,26 @@ public class MobileInfo {
      */
     public void setCarrier(String carrier) {
         this.carrier = carrier;
+    }
+
+    /**
+     * 是否需要二次图片验证码
+     * 
+     * @author zhuyuhang
+     * @return
+     */
+    public boolean isSecondCaptchaNeeded() {
+        return secondCaptchaNeeded;
+    }
+
+    /**
+     * 是否需要二次图片验证码
+     * 
+     * @author zhuyuhang
+     * @param secondCaptchaNeeded
+     */
+    public void setSecondCaptchaNeeded(boolean secondCaptchaNeeded) {
+        this.secondCaptchaNeeded = secondCaptchaNeeded;
     }
 
 }

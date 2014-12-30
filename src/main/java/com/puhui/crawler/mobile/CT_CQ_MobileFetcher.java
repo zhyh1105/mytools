@@ -45,7 +45,7 @@ public class CT_CQ_MobileFetcher extends MobileFetcher {
     private String jsessionid_app4 = null;
     private int batchId = 0;
     private static SSLConnectionSocketFactory sscsf = SSLUtils.createSSLConnectionSocketFactory(
-            CM_HB_MobileFetcher.class.getResourceAsStream("/certs/service.cq.10086.cn.keystore"), storePasswd);
+            CM_HB_MobileFetcher.class.getResourceAsStream("/certs/uam.ct10000.com.keystore"), storePasswd);
 
     public CT_CQ_MobileFetcher() {
         this.client = HttpUtils.getHttpClient(false, cookieStore);
@@ -503,6 +503,8 @@ public class CT_CQ_MobileFetcher extends MobileFetcher {
             // super.submitBillTasks();
             this.gsm();
             this.sms();
+            this.addvalue();
+            this.gprs();
         } finally {
             this.close();
         }
@@ -723,8 +725,15 @@ public class CT_CQ_MobileFetcher extends MobileFetcher {
 
     @Override
     protected void addvalue() {
-        // TODO Auto-generated method stub
+        Date date = new Date();
+        for (int i = 0; i < MOBILE_BILLS_MONTH_COUNT; i++) {
+            addvalue(date);
+            date = DateUtils.addMonths(date, -1);
+        }
+    }
 
+    private void addvalue(Date month) {
+        commonFee(month, "string:300004", BILL_TYPE_ADDVALUE, "短信详单");
     }
 
     @Override
@@ -735,8 +744,15 @@ public class CT_CQ_MobileFetcher extends MobileFetcher {
 
     @Override
     protected void gprs() {
-        // TODO Auto-generated method stub
+        Date date = new Date();
+        for (int i = 0; i < MOBILE_BILLS_MONTH_COUNT; i++) {
+            gprs(date);
+            date = DateUtils.addMonths(date, -1);
+        }
+    }
 
+    private void gprs(Date month) {
+        commonFee(month, "string:300003", BILL_TYPE_GPRS, "短信详单");
     }
 
     @Override

@@ -274,13 +274,11 @@ public class CM_HB_MobileFetcher extends MobileFetcher {
 
     @Override
     protected void mzlog() {
-        // TODO Auto-generated method stub
 
     }
 
     @Override
     protected void addvalue() {
-        // TODO Auto-generated method stub
         Date date = new Date();
         for (int i = 0; i < MOBILE_BILLS_MONTH_COUNT; i++) {
             commonFee(date, "ISMG", BILL_TYPE_ADDVALUE, "增值业务扣费记录");
