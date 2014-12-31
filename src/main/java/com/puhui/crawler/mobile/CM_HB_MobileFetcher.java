@@ -28,7 +28,6 @@ import com.puhui.crawler.util.HttpUtils;
  */
 public class CM_HB_MobileFetcher extends MobileFetcher {
     private Logger logger = Logger.getLogger(CM_HB_MobileFetcher.class);
-    private String ssoSessionID;
     private CloseableHttpClient client;
     // private CloseableHttpClient clientWithSSL;
     // private static String storePasswd = "123456";
@@ -125,9 +124,10 @@ public class CM_HB_MobileFetcher extends MobileFetcher {
             url = "http://www.hb.10086.cn/my/score/customerAjax.action?_=1418191107717";
             responseString = HttpUtils.executeGetWithResult(client, url);
             logger.debug(responseString);
-            // 当前消费情况
+            // 当前余额
             url = "http://www.hb.10086.cn/my/balance/queryBalance.action";
             responseString = HttpUtils.executeGetWithResult(client, url);
+            // writeToFile(file, entity)
             logger.debug(responseString);
 
             logger.debug("hb10086自动登录确认");
@@ -145,8 +145,7 @@ public class CM_HB_MobileFetcher extends MobileFetcher {
             if (cmtokenid == null) {
                 return false;
             }
-            this.ssoSessionID = getSSOSessionID(cmtokenid);
-            logger.debug("hb10086登录，ssoSessionID:" + ssoSessionID);
+            logger.debug("hb10086登录，cmtokenid:" + cmtokenid);
             return true;
         } catch (Exception e) {
             logger.error(e.getMessage(), e);
@@ -163,7 +162,11 @@ public class CM_HB_MobileFetcher extends MobileFetcher {
         try {
             // 自动确认登录
             this.loginSecondCheck();
+            // TODO 取消下面注释
             super.submitBillTasks();
+            // TODO 删掉下面两行
+            // this.accountBalance();
+            // this.address();
             this.close();
         } catch (Exception e) {
             logger.error(e.getMessage());
@@ -314,6 +317,25 @@ public class CM_HB_MobileFetcher extends MobileFetcher {
     }
 
     @Override
+    protected void address() {
+        logger.debug("获取收货地址");
+        String url = "http://www.hb.10086.cn/servicenew/mySendInfo.action";
+        try {
+            HttpUtils.executeGet(client, url);
+            String ssoUrl = "https://hb.ac.10086.cn/SSO/loginbox?service=servicenew&style=mmobile&continue=http%3A%2F%2Fwww.hb.10086.cn%2Fservicenew%2FmySendInfo.action";
+            String content = HttpUtils.executeGetWithResult(client, ssoUrl);
+            logger.debug(content);
+            HttpPost post = HttpUtils.buildPostFromHtml(content, "#sso");
+            content = HttpUtils.executePostWithResult(client, post);
+            logger.debug(content);
+            content = HttpUtils.executeGetWithResult(client, url);
+            writeToFile(createTempFile(BILL_TYPE_ADDRESS), content);
+        } catch (Exception e) {
+            logger.error("获取收货地址失败", e);
+        }
+    }
+
+    @Override
     protected void currFee() {
         // TODO Auto-generated method stub
 
@@ -407,6 +429,18 @@ public class CM_HB_MobileFetcher extends MobileFetcher {
     @Override
     public String getAreaSimpleName() {
         return "hb";
+    }
+
+    @Override
+    protected void accountBalance() {
+        logger.debug("获取账户余额");
+        String url = "http://www.hb.10086.cn/my/balance/queryBalance.action";
+        try {
+            String content = HttpUtils.executePostWithResult(client, url, null);
+            writeToFile(createTempFile(BILL_TYPE_ACCOUNTBALANCE), content);
+        } catch (Exception e) {
+            logger.error("获取账户余额失败", e);
+        }
     }
 
     private void logout() {

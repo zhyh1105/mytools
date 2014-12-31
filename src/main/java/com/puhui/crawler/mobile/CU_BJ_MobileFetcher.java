@@ -19,7 +19,6 @@ import org.apache.log4j.Logger;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
-import com.puhui.crawler.Messages;
 import com.puhui.crawler.util.DateUtils;
 import com.puhui.crawler.util.HttpUtils;
 
@@ -47,18 +46,15 @@ public class CU_BJ_MobileFetcher extends MobileFetcher {
     @Override
     public boolean login(String phone, String password, String rnum) {
         super.login(phone, password, rnum);
-        CloseableHttpClient client = HttpUtils.getHttpClient(false, cookieStore);
-        String url = Messages.getString("ChinaUnicom.login.url");
+        CloseableHttpClient client = HttpUtils.getHttpClient(true, cookieStore);
+        String url = "https://uac.10010.com/portal/Service/MallLogin?1=1";
         Map<String, Object> params = new HashMap<>();
-        params.put(Messages.getString("ChinaUnicom.login.param.userName"), phone);
-        params.put(Messages.getString("ChinaUnicom.login.param.password"), password);
-        params.put(Messages.getString("ChinaUnicom.login.param.pwdType"),
-                Messages.getString("ChinaUnicom.login.param.pwdType.value"));
-        params.put(Messages.getString("ChinaUnicom.login.param.productType"),
-                Messages.getString("ChinaUnicom.login.param.productType.value"));
-        params.put(Messages.getString("ChinaUnicom.login.param.redirectType"),
-                Messages.getString("ChinaUnicom.login.param.redirectType.value"));
-        params.put(Messages.getString("ChinaUnicom.login.param._"), System.currentTimeMillis());
+        params.put("userName", phone);
+        params.put("password", password);
+        params.put("pwdType", "01");
+        params.put("productType", "01");
+        params.put("redirectType", "01");
+        params.put("_", System.currentTimeMillis());
         url = url + HttpUtils.buildParamString(params);
         HttpGet get = HttpUtils.get(url);
         try {
@@ -66,8 +62,8 @@ public class CU_BJ_MobileFetcher extends MobileFetcher {
             String result = EntityUtils.toString(response.getEntity(), HttpUtils.UTF_8);
             response.close();
             JSONObject json = JSON.parseObject(result);
-            String resultCode = json.getString(Messages.getString("ChinaUnicom.login.result.resultCode"));
-            if (Messages.getString("ChinaUnicom.login.result.resultCode.success").equals(resultCode)) {
+            String resultCode = json.getString("resultCode");
+            if ("0000".equals(resultCode)) {
                 logger.info("登录成功[" + phone + "," + password + "]");
                 url = "http://iservice.10010.com/e3/static/common/info?_=" + System.currentTimeMillis();
                 HttpUtils.executePost(client, url);
@@ -84,7 +80,6 @@ public class CU_BJ_MobileFetcher extends MobileFetcher {
                 }
                 FileUtils
                         .write(createTempFile(BILL_TYPE_PERSONALINFO), result, Charset.forName(HttpUtils.UTF_8), false);
-                // TODO 获取个人信息 判断套餐
                 JSONObject userInfo = json.getJSONObject("userInfo");
                 String packageName = userInfo.getString("packageName");// 套餐名称
                 if (packageName != null) {
@@ -99,6 +94,7 @@ public class CU_BJ_MobileFetcher extends MobileFetcher {
                 return true;
             } else {
                 logger.info("登录失败[" + phone + "," + password + ", " + result + "]");
+                return false;
             }
         } catch (Exception e) {
             logger.error(e.getMessage(), e);
@@ -108,21 +104,19 @@ public class CU_BJ_MobileFetcher extends MobileFetcher {
 
     @Override
     public boolean loadBills() {
-        return this.go();
-    }
-
-    /**
-     * @author zhuyuhang
-     * @return
-     */
-    private boolean go() {
-        this.personalInfo();
-        this.hisBill();
-        this.gsm();
-        this.sms();
-        this.gprs();
-        this.addvalue();
-        this.close();
+        try {
+            this.hisBill();
+            this.gsm();
+            this.sms();
+            this.gprs();
+            this.addvalue();
+            this.address();
+            this.personalInfo();
+            this.accountBalance();
+            loadBillsSuccessfully = true;
+        } finally {
+            this.close();
+        }
         return true;
     }
 
@@ -168,15 +162,12 @@ public class CU_BJ_MobileFetcher extends MobileFetcher {
     private void hisBill(Date date) {
         this.checkLogin();
         logger.info("获取历史账单(" + DateUtils.formatDate(date) + ")");
-        String url = Messages.getString("ChinaUnicom.queryHistoryBill.url") + System.currentTimeMillis();
+        String url = "http://iservice.10010.com/e3/static/query/queryHistoryBill?_=" + System.currentTimeMillis();
         HttpPost httppost = HttpUtils.post(url);
         Map<String, Object> params = new HashMap<>();
-        params.put(Messages.getString("ChinaUnicom.queryHistoryBill.param.quertype"),
-                Messages.getString("ChinaUnicom.queryHistoryBill.param.quertype.value"));
-        params.put(Messages.getString("ChinaUnicom.queryHistoryBill.param.querycode"),
-                Messages.getString("ChinaUnicom.queryHistoryBill.param.querycode.value"));
-        params.put(Messages.getString("ChinaUnicom.queryHistoryBill.param.billdate"),
-                DateUtils.formatDate(date, Messages.getString("ChinaUnicom.queryHistoryBill.param.billdate.format")));
+        params.put("quertype", "0001");
+        params.put("querycode", "0001");
+        params.put("billdate", DateUtils.formatDate(date, "yyyyMM"));
         httppost.setEntity(HttpUtils.buildParams(params));
         try {
             CloseableHttpResponse response = this.client.execute(httppost);
@@ -233,9 +224,46 @@ public class CU_BJ_MobileFetcher extends MobileFetcher {
      * @param client
      * @param date
      */
-    private CU_BJ_MobileFetcher gsm(Date date) {
-        gsm(date, 1, 1);
-        return this;
+    private int gsmRetryTimes = 0;
+
+    private void gsm(Date date) {
+        if (gsmRetryTimes > 5) {
+            return;
+        }
+        gsmRetryTimes++;
+        // gsm(date, 1, 1);
+        logger.info("获取通话详单(" + DateUtils.formatDate(date, "yyyyMM"));
+        String url = "http://iservice.10010.com/e3/static/query/callDetail?_=" + System.currentTimeMillis();
+        HttpPost httppost = HttpUtils.post(url);
+        Map<String, Object> params = new HashMap<>();
+        params.put("pageNo", 1);
+        params.put("pageSize", PAGE_SIZE);
+        params.put("beginDate", DateUtils.getFirstDayOfMonth(date));
+        params.put("endDate", DateUtils.getLastDayOfMonth(date));
+        httppost.setEntity(HttpUtils.buildParams(params));
+        try {
+            CloseableHttpResponse response = client.execute(httppost);
+            String r = EntityUtils.toString(response.getEntity(), HttpUtils.UTF_8);
+            response.close();
+            JSONObject json = JSON.parseObject(r);
+            boolean isSuccess = json.getBooleanValue("isSuccess");
+            if (isSuccess) {
+                int totalRecord = json.getIntValue("totalRecord");
+                if (totalRecord > 0) {
+                    JSONObject pageMap = json.getJSONObject("pageMap");
+                    if (pageMap != null) {
+                        JSONArray result = pageMap.getJSONArray(("result"));
+                        FileUtils.write(createTempFile(BILL_TYPE_GSM), result.toString(),
+                                Charset.forName(HttpUtils.UTF_8), true);
+                    }
+                }
+                return;
+            } else {
+                gsm(date);
+            }
+        } catch (Exception e) {
+            logger.error("获取通话详单失败", e);
+        }
     }
 
     /**
@@ -252,30 +280,27 @@ public class CU_BJ_MobileFetcher extends MobileFetcher {
             return;
         }
         logger.info("获取通话详单(" + DateUtils.formatDate(date, "yyyyMM") + ", " + pageNo + ", " + _totalPages + ")");
-        String url = Messages.getString("ChinaUnicom.callDetail.url") + System.currentTimeMillis();
+        String url = "http://iservice.10010.com/e3/static/query/callDetail?_=" + System.currentTimeMillis();
         HttpPost httppost = HttpUtils.post(url);
         Map<String, Object> params = new HashMap<>();
-        params.put(Messages.getString("ChinaUnicom.callDetail.param.pageNo"), pageNo);
-        params.put(Messages.getString("ChinaUnicom.callDetail.param.pageSize"), PAGE_SIZE);
-        params.put(Messages.getString("ChinaUnicom.callDetail.param.beginDate"), DateUtils.getFirstDayOfMonth(date));
-        params.put(Messages.getString("ChinaUnicom.callDetail.param.endDate"), DateUtils.getLastDayOfMonth(date));
+        params.put("pageNo", pageNo);
+        params.put("pageSize", PAGE_SIZE);
+        params.put("beginDate", DateUtils.getFirstDayOfMonth(date));
+        params.put("endDate", DateUtils.getLastDayOfMonth(date));
         httppost.setEntity(HttpUtils.buildParams(params));
         try {
             CloseableHttpResponse response = client.execute(httppost);
             String r = EntityUtils.toString(response.getEntity(), HttpUtils.UTF_8);
             response.close();
             JSONObject json = JSON.parseObject(r);
-            boolean isSuccess = json.getBooleanValue(Messages.getString("ChinaUnicom.callDetail.result.isSuccess"));
+            boolean isSuccess = json.getBooleanValue("isSuccess");
             if (isSuccess) {
-                int totalRecord = json.getIntValue(Messages.getString("ChinaUnicom.callDetail.result.totalRecord"));
+                int totalRecord = json.getIntValue("totalRecord");
                 if (totalRecord > 0) {
-                    JSONObject pageMap = json
-                            .getJSONObject(Messages.getString("ChinaUnicom.callDetail.result.pageMap"));
+                    JSONObject pageMap = json.getJSONObject("pageMap");
                     if (pageMap != null) {
-                        int totalPages = pageMap.getIntValue(Messages
-                                .getString("ChinaUnicom.callDetail.result.pageMap.totalPages"));
-                        JSONArray result = pageMap.getJSONArray(Messages
-                                .getString("ChinaUnicom.callDetail.result.pageMap.result"));
+                        int totalPages = pageMap.getIntValue(("totalPages"));
+                        JSONArray result = pageMap.getJSONArray(("result"));
                         FileUtils.write(createTempFile(BILL_TYPE_GSM), result.toString(),
                                 Charset.forName(HttpUtils.UTF_8), true);
                         gsm(date, ++pageNo, totalPages);
@@ -342,8 +367,44 @@ public class CU_BJ_MobileFetcher extends MobileFetcher {
      * @author zhuyuhang
      * @param date
      */
+    private int smsRetryTimes = 0;
+
     private void sms(Date date) {
-        sms(date, 1, 1);
+        // sms(date, 1, 1);
+        if (smsRetryTimes > 5) {// 马德 突然发现有时候丫就不给
+            return;
+        }
+        logger.info("获取短信详单" + DateUtils.formatDate(date));
+        String url = "http://iservice.10010.com/e3/static/query/sms?_=" + System.currentTimeMillis();
+        Map<String, Object> params = new HashMap<>();
+        params.put("pageNo", 1);
+        params.put("pageSize", PAGE_SIZE);
+        params.put("begindate", DateUtils.getFirstDayOfMonth(date, "yyyyMMdd"));
+        params.put("enddate", DateUtils.getLastDayOfMonth(date, "yyyyMMdd"));
+        HttpPost httppost = HttpUtils.post(url, params);
+        try {
+            CloseableHttpResponse response = client.execute(httppost);
+            String r = EntityUtils.toString(response.getEntity(), HttpUtils.UTF_8);
+            response.close();
+            JSONObject json = JSON.parseObject(r);
+            boolean isSuccess = json.getBooleanValue("isSuccess");
+            if (isSuccess) {
+                int totalRecord = json.getIntValue("smsCount");
+                if (totalRecord > 0) {
+                    JSONObject pageMap = json.getJSONObject("pageMap");
+                    if (pageMap != null) {
+                        JSONArray result = pageMap.getJSONArray(("result"));
+                        FileUtils.write(createTempFile(BILL_TYPE_SMS), result.toString(),
+                                Charset.forName(HttpUtils.UTF_8), true);
+                    }
+                }
+                return;
+            } else {
+                sms(date);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     /**
@@ -357,30 +418,26 @@ public class CU_BJ_MobileFetcher extends MobileFetcher {
             return;
         }
         logger.info("获取短信详单(" + DateUtils.formatDate(date) + ", " + pageNo + ", " + _totalPages + ")");
-        String url = Messages.getString("ChinaUnicom.sms.url") + System.currentTimeMillis();
+        String url = "http://iservice.10010.com/e3/static/query/sms?_=" + System.currentTimeMillis();
         Map<String, Object> params = new HashMap<>();
-        params.put(Messages.getString("ChinaUnicom.sms.param.pageNo"), pageNo);
-        params.put(Messages.getString("ChinaUnicom.sms.param.pageSize"), PAGE_SIZE);
-        params.put(Messages.getString("ChinaUnicom.sms.param.begindate"),
-                DateUtils.getFirstDayOfMonth(date, Messages.getString("ChinaUnicom.sms.param.begindate.patter")));
-        params.put(Messages.getString("ChinaUnicom.sms.param.enddate"),
-                DateUtils.getLastDayOfMonth(date, Messages.getString("ChinaUnicom.sms.param.enddate.pattern")));
+        params.put("pageNo", pageNo);
+        params.put("pageSize", PAGE_SIZE);
+        params.put("begindate", DateUtils.getFirstDayOfMonth(date, "yyyyMMdd"));
+        params.put("enddate", DateUtils.getLastDayOfMonth(date, "yyyyMMdd"));
         HttpPost httppost = HttpUtils.post(url, params);
         try {
             CloseableHttpResponse response = client.execute(httppost);
             String r = EntityUtils.toString(response.getEntity(), HttpUtils.UTF_8);
             response.close();
             JSONObject json = JSON.parseObject(r);
-            boolean isSuccess = json.getBooleanValue(Messages.getString("ChinaUnicom.sms.result.isSuccess"));
+            boolean isSuccess = json.getBooleanValue("isSuccess");
             if (isSuccess) {
-                int totalRecord = json.getIntValue(Messages.getString("ChinaUnicom.sms.result.totalRecord"));
+                int totalRecord = json.getIntValue("smsCount");
                 if (totalRecord > 0) {
-                    JSONObject pageMap = json.getJSONObject(Messages.getString("ChinaUnicom.sms.result.pageMap"));
+                    JSONObject pageMap = json.getJSONObject("pageMap");
                     if (pageMap != null) {
-                        int totalPages = pageMap.getIntValue(Messages
-                                .getString("ChinaUnicom.sms.result.pageMap.totalPages"));
-                        JSONArray result = pageMap.getJSONArray(Messages
-                                .getString("ChinaUnicom.sms.result.pageMap.result"));
+                        int totalPages = pageMap.getIntValue(("totalPages"));
+                        JSONArray result = pageMap.getJSONArray(("result"));
                         FileUtils.write(createTempFile(BILL_TYPE_SMS), result.toString(),
                                 Charset.forName(HttpUtils.UTF_8), true);
                         sms(date, ++pageNo, totalPages);
@@ -464,30 +521,27 @@ public class CU_BJ_MobileFetcher extends MobileFetcher {
             return;
         }
         logger.info("获取增值业务(" + DateUtils.formatDate(date) + ", " + pageNo + ", " + _totalPages + ")");
-        String url = Messages.getString("ChinaUnicom.callValueAdded.url") + System.currentTimeMillis();
+        String url = "http://iservice.10010.com/e3/static/query/callValueAdded?_=" + System.currentTimeMillis();
         HttpPost httppost = HttpUtils.post(url);
         Map<String, Object> params = new HashMap<>();
-        params.put(Messages.getString("ChinaUnicom.callValueAdded.param.pageNo"), pageNo);
-        params.put(Messages.getString("ChinaUnicom.callValueAdded.param.pageSize"), PAGE_SIZE);
-        params.put(Messages.getString("ChinaUnicom.callValueAdded.param.beginDate"), DateUtils.getFirstDayOfMonth(date));
-        params.put(Messages.getString("ChinaUnicom.callValueAdded.param.endDate"), DateUtils.getLastDayOfMonth(date));
+        params.put("pageNo", pageNo);
+        params.put("pageSize", PAGE_SIZE);
+        params.put("beginDate", DateUtils.getFirstDayOfMonth(date));
+        params.put("endDate", DateUtils.getLastDayOfMonth(date));
         httppost.setEntity(HttpUtils.buildParams(params));
         try {
             CloseableHttpResponse response = client.execute(httppost);
             String r = EntityUtils.toString(response.getEntity(), HttpUtils.UTF_8);
             response.close();
             JSONObject json = JSON.parseObject(r);
-            boolean isSuccess = json.getBooleanValue(Messages.getString("ChinaUnicom.callValueAdded.result.isSuccess"));
+            boolean isSuccess = json.getBooleanValue("isSuccess");
             if (isSuccess) {
-                int totalRecord = json.getIntValue(Messages.getString("ChinaUnicom.callValueAdded.result.totalRecord"));
+                int totalRecord = json.getIntValue("totalRecord");
                 if (totalRecord > 0) {
-                    JSONObject pageMap = json.getJSONObject(Messages
-                            .getString("ChinaUnicom.callValueAdded.result.pageMap"));
+                    JSONObject pageMap = json.getJSONObject(("pageMap"));
                     if (pageMap != null) {
-                        int totalPages = pageMap.getIntValue(Messages
-                                .getString("ChinaUnicom.callValueAdded.result.pageMap.totalPages"));
-                        JSONArray result = pageMap.getJSONArray(Messages
-                                .getString("ChinaUnicom.callValueAdded.result.pageMap.result"));
+                        int totalPages = pageMap.getIntValue(("totalPages"));
+                        JSONArray result = pageMap.getJSONArray(("result"));
                         FileUtils.write(createTempFile(BILL_TYPE_ADDVALUE), result.toString(),
                                 Charset.forName(HttpUtils.UTF_8), true);
                         addvalue(date, ++pageNo, totalPages);
@@ -534,13 +588,13 @@ public class CU_BJ_MobileFetcher extends MobileFetcher {
      */
     private void callFlow(Date date) {
         this.checkLogin();
-        String url = Messages.getString("ChinaUnicom.callFlow.url") + System.currentTimeMillis();
+        String url = "http://iservice.10010.com/e3/static/query/callFlow?_=" + System.currentTimeMillis();
         HttpPost httppost = HttpUtils.post(url);
         Map<String, Object> params = new HashMap<>();
-        params.put(Messages.getString("ChinaUnicom.callFlow.param.pageNo"), 1);
-        params.put(Messages.getString("ChinaUnicom.callFlow.param.pageSize"), PAGE_SIZE);
-        params.put(Messages.getString("ChinaUnicom.callFlow.param.beginDate"), DateUtils.getFirstDayOfMonth(date));
-        params.put(Messages.getString("ChinaUnicom.callFlow.param.endDate"), DateUtils.getLastDayOfMonth(date));
+        params.put("pageNo", 1);
+        params.put("pageSize", PAGE_SIZE);
+        params.put("beginDate", DateUtils.getFirstDayOfMonth(date));
+        params.put("endDate", DateUtils.getLastDayOfMonth(date));
         httppost.setEntity(HttpUtils.buildParams(params));
         try {
             CloseableHttpResponse response = client.execute(httppost);
@@ -597,7 +651,7 @@ public class CU_BJ_MobileFetcher extends MobileFetcher {
             CloseableHttpResponse response = client.execute(request);
             String resp = EntityUtils.toString(response.getEntity(), HttpUtils.UTF_8);
             response.close();
-            FileUtils.write(createTempFile(BILL_TYPE_GPRS + "_" + "3g"), resp, Charset.forName(HttpUtils.UTF_8), true);
+            FileUtils.write(createTempFile(BILL_TYPE_GPRS + "_3g"), resp, Charset.forName(HttpUtils.UTF_8), true);
         } catch (Exception e) {
             logger.error("查询3g上网流量失败", e);
         }
@@ -624,33 +678,27 @@ public class CU_BJ_MobileFetcher extends MobileFetcher {
             return;
         }
         logger.info("获取手机上网记录(" + DateUtils.formatDate(date) + ", " + pageNo + ", " + _totalPages + ")");
-        String url = Messages.getString("ChinaUnicom.callNetPlayRecord.url") + System.currentTimeMillis();
+        String url = "http://iservice.10010.com/e3/static/query/callNetPlayRecord?_=" + System.currentTimeMillis();
         HttpPost httppost = HttpUtils.post(url);
         Map<String, Object> params = new HashMap<>();
-        params.put(Messages.getString("ChinaUnicom.callNetPlayRecord.param.pageNo"), pageNo);
-        params.put(Messages.getString("ChinaUnicom.callNetPlayRecord.param.pageSize"), PAGE_SIZE);
-        params.put(Messages.getString("ChinaUnicom.callNetPlayRecord.param.beginDate"),
-                DateUtils.getFirstDayOfMonth(date));
-        params.put(Messages.getString("ChinaUnicom.callNetPlayRecord.param.endDate"), DateUtils.getLastDayOfMonth(date));
+        params.put("pageNo", pageNo);
+        params.put("pageSize", PAGE_SIZE);
+        params.put("beginDate", DateUtils.getFirstDayOfMonth(date));
+        params.put("endDate", DateUtils.getLastDayOfMonth(date));
         httppost.setEntity(HttpUtils.buildParams(params));
         try {
             CloseableHttpResponse response = client.execute(httppost);
             String r = EntityUtils.toString(response.getEntity(), HttpUtils.UTF_8);
             response.close();
             JSONObject json = JSON.parseObject(r);
-            boolean isSuccess = json.getBooleanValue(Messages
-                    .getString("ChinaUnicom.callNetPlayRecord.result.isSuccess"));
+            boolean isSuccess = json.getBooleanValue(("isSuccess"));
             if (isSuccess) {
-                int totalRecord = json.getIntValue(Messages
-                        .getString("ChinaUnicom.callNetPlayRecord.result.totalRecord"));
+                int totalRecord = json.getIntValue(("totalRecord"));
                 if (totalRecord > 0) {
-                    JSONObject pageMap = json.getJSONObject(Messages
-                            .getString("ChinaUnicom.callNetPlayRecord.result.pageMap"));
+                    JSONObject pageMap = json.getJSONObject(("pageMap"));
                     if (pageMap != null) {
-                        int totalPages = pageMap.getIntValue(Messages
-                                .getString("ChinaUnicom.callNetPlayRecord.result.pageMap.totalPages"));
-                        JSONArray result = pageMap.getJSONArray(Messages
-                                .getString("ChinaUnicom.callNetPlayRecord.result.pageMap.result"));
+                        int totalPages = pageMap.getIntValue(("totalPages"));
+                        JSONArray result = pageMap.getJSONArray(("result"));
                         FileUtils.write(createTempFile(BILL_TYPE_GPRS), result.toString(),
                                 Charset.forName(HttpUtils.UTF_8), true);
                         gprs(date, ++pageNo, totalPages);
@@ -659,6 +707,57 @@ public class CU_BJ_MobileFetcher extends MobileFetcher {
             }
         } catch (Exception e) {
             e.printStackTrace();
+        }
+    }
+
+    @Override
+    protected void accountBalance() {
+        if (is3g()) {
+            accountBalance3g();
+            return;
+        }
+        try {
+            logger.debug("当前余额");
+            String url = "http://iservice.10010.com/e3/static/query/accountBalance/search?_="
+                    + System.currentTimeMillis();
+            Map<String, Object> params = new HashMap<>();
+            params.put("type", "onlyAccount");
+            String resp = HttpUtils.executePostWithResult(client, url, params);
+            JSONObject json = JSON.parseObject(resp);
+            if (!json.getBooleanValue("isError")) {
+                writeToFile(createTempFile(BILL_TYPE_CURRFEE), resp);
+            }
+        } catch (Exception e) {
+            logger.error("获取当前余额失败");
+        }
+    }
+
+    @Override
+    protected void currFee() {
+
+    }
+
+    private void accountBalance3g() {
+        try {
+            logger.debug("当前余额");
+            String url = "http://iservice.10010.com/ehallService/static/querybalance/execute/Query_YHhead.processData/Query_YHhead_Data?_="
+                    + System.currentTimeMillis();
+            String resp = HttpUtils.executePostWithResult(client, url, null);
+            writeToFile(createTempFile(BILL_TYPE_ACCOUNTBALANCE + "_3g"), resp);
+        } catch (Exception e) {
+            logger.error("获取当前余额失败");
+        }
+    }
+
+    @Override
+    protected void address() {
+        try {
+            logger.debug("收货地址");
+            String url = "https://uac.10010.com/cust/postaddr/showPostAddrInfo?" + System.currentTimeMillis();
+            String resp = HttpUtils.executePostWithResult(client, url, null);
+            writeToFile(createTempFile(BILL_TYPE_ADDRESS + (is3g() ? "_3g" : "")), resp);
+        } catch (Exception e) {
+            logger.error("获取当前余额失败");
         }
     }
 
@@ -703,9 +802,12 @@ public class CU_BJ_MobileFetcher extends MobileFetcher {
         super.close();
         if (this.client != null) {
             try {
-                this.client.close();
+                if (loadBillsSuccessfully) {
+                    this.client.close();
+                    this.client = null;
+                }
             } catch (Exception e) {
-                e.printStackTrace();
+                logger.error(e.getMessage(), e);
             }
         }
     }
@@ -719,25 +821,4 @@ public class CU_BJ_MobileFetcher extends MobileFetcher {
     public String getAreaSimpleName() {
         return "bj";
     }
-
-    @Override
-    protected void mzlog() {
-
-    }
-
-    @Override
-    protected void rc() {
-
-    }
-
-    @Override
-    protected void mon() {
-
-    }
-
-    @Override
-    protected void currFee() {
-
-    }
-
 }

@@ -25,7 +25,7 @@ import com.puhui.crawler.util.DateUtils;
 import com.puhui.crawler.util.HttpUtils;
 
 public class MailReceiver {
-    private Logger logger = Logger.getLogger(MailReceiver.class);
+    private static final Logger logger = Logger.getLogger(MailReceiver.class);
     public final String POP3 = "pop3";
     public final String IMAP = "imap";
     public final String INBOX = "INBOX";
@@ -201,5 +201,13 @@ public class MailReceiver {
         }
         return new File(dir, "bank_" + MailBankMapUtils.getBankNameByEmailAddress(from) + "_"
                 + DateUtils.formatDate(new Date(), "yyyyMMddHHmmssS") + ".html");
+    }
+
+    public static void main(String[] args) {
+        long now = System.currentTimeMillis();
+        logger.debug("start");
+        new MailReceiver("hongliess@163.com", "123456ss").receiveMail();
+        logger.debug("over");
+        logger.debug((System.currentTimeMillis() - now) / 1000d);
     }
 }

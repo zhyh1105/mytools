@@ -657,8 +657,34 @@ public class CM_BJ_MobileFetcher extends MobileFetcher {
 
     @Override
     protected void personalInfo() {
-        // TODO Auto-generated method stub
 
+    }
+
+    @Override
+    protected void address() {
+        logger.debug("获取收货地址信息");
+        try {
+            String url = "http://service.bj.10086.cn/member/showMember.action";
+            String content = HttpUtils.executePostWithResult(client, url, null);
+            writeToFile(createTempFile(BILL_TYPE_ADDRESS), content);
+        } catch (Exception e) {
+            logger.error("获取收货地址信息失败", e);
+        }
+    }
+
+    @Override
+    protected void accountBalance() {
+        // TODO 解析需要参考js
+        // 21.04err0.0err0.0err0.0err0.0 积分 65_65积分 套餐及固定费 28.00 套餐外语音通信费 3.30
+        // 套餐外上网费 0.00 套餐外短信/彩信费 1.20 增值业务费 0.00 代收业务费 0.00 其他费用 0.00 优惠及减免 0.00
+        // 合计 32.50
+        try {
+            String url = "http://www.bj.10086.cn/www/servletfuwuhfnew";
+            String content = HttpUtils.executePostWithResult(client, url, null);
+            writeToFile(createTempFile(BILL_TYPE_ACCOUNTBALANCE), content);
+        } catch (Exception e) {
+            logger.error("获取余额信息失败", e);
+        }
     }
 
     @Override

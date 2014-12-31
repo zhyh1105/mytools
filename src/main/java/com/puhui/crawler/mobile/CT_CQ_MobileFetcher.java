@@ -307,6 +307,24 @@ public class CT_CQ_MobileFetcher extends MobileFetcher {
             response.close();
             responseString = HttpUtils.unicodeToString(responseString);
             FileUtils.writeStringToFile(createTempFile(BILL_TYPE_PERSONALINFO), responseString, HttpUtils.UTF_8);
+
+            params.put("c0-methodName", "getMallAddress");
+            post = HttpUtils.post(url, params);
+            response = client.execute(post);
+            responseString = EntityUtils.toString(response.getEntity(), HttpUtils.UTF_8);
+            response.close();
+            responseString = HttpUtils.unicodeToString(responseString);
+            FileUtils.writeStringToFile(createTempFile(BILL_TYPE_ADDRESS), responseString, HttpUtils.UTF_8);
+
+            url = "http://cq.189.cn/bill/bill.htm?id=4";
+            logger.debug(HttpUtils.executeGetWithResult(client, url));
+
+            url = "http://cq.189.cn/bill/dwr/engine.js";
+            this.scriptSessionId = loadScriptSessionId(url);
+            this.jsessionid_app4 = HttpUtils.getFirstCookie(cookieStore, "JSESSIONID_APP4");
+            url = "http://cq.189.cn/bill/randImage";
+            HttpUtils.executeGet(client, url);
+
             return true;
         } catch (Exception e) {
             logger.error(e.getMessage(), e);
@@ -373,16 +391,7 @@ public class CT_CQ_MobileFetcher extends MobileFetcher {
             // url = HttpUtils.getLocationFromHeader(response, true);//
             // http://cq.189.cn/bill/bill.htm?id=4
 
-            String url = "http://cq.189.cn/bill/bill.htm?id=4";
-            logger.debug(HttpUtils.executeGetWithResult(client, url));
-
-            url = "http://cq.189.cn/bill/dwr/engine.js";
-            this.scriptSessionId = loadScriptSessionId(url);
-            this.jsessionid_app4 = HttpUtils.getFirstCookie(cookieStore, "JSESSIONID_APP4");
-            url = "http://cq.189.cn/bill/randImage";
-            HttpUtils.executeGet(client, url);
-
-            url = "http://cq.189.cn/cms/menu.htm?mod=1002&callback=jsonp1419243496297";
+            String url = "http://cq.189.cn/cms/menu.htm?mod=1002&callback=jsonp1419243496297";
             HttpUtils.executeGet(client, url);
             url = "http://cq.189.cn/bill/dwr/call/plaincall/billDwr.getListTypeMonth.dwr";
             Map<String, Object> params = new HashMap<>();
@@ -500,11 +509,13 @@ public class CT_CQ_MobileFetcher extends MobileFetcher {
      */
     protected void submitBillTasks() {
         try {
-            // super.submitBillTasks();
             this.gsm();
             this.sms();
             this.addvalue();
             this.gprs();
+            this.personalInfo();
+            this.address();
+            this.accountBalance();
         } finally {
             this.close();
         }
@@ -706,14 +717,41 @@ public class CT_CQ_MobileFetcher extends MobileFetcher {
 
     @Override
     protected void personalInfo() {
-        String url = "http://hb.189.cn/pages/selfservice/custinfo/userinfo/userInfo.action";
+
+    }
+
+    @Override
+    protected void address() {
+    }
+
+    @Override
+    protected void accountBalance() {
+        logger.debug("获取余额信息");
+        String url = "http://cq.189.cn/bill/dwr/call/plaincall/billDwr.getYE.dwr";
         try {
-            HttpGet get = HttpUtils.get(url);
-            CloseableHttpResponse response = client.execute(get);
-            writeToFile(createTempFile(BILL_TYPE_PERSONALINFO), response.getEntity());
+            Map<String, Object> params = new HashMap<>();
+            params.put("callCount", "1");
+            params.put("page", "/bill/bill.htm?id=1");
+            params.put("httpSessionId", this.jsessionid_app4);
+            params.put("scriptSessionId", getScriptSessionId());
+            params.put("c0-scriptName", "billDwr");
+            params.put("c0-methodName", "getYE");
+            params.put("c0-id", "0");
+            params.put("c0-param0", "string:0");
+            params.put("batchId", batchId++);
+            HttpPost post = HttpUtils.post(url, params);
+            post.addHeader("Content-Type", "text/plain; charset=UTF-8");
+            post.addHeader("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
+            post.addHeader("Accept-Language", "en-US,en;q=0.5");
+            post.addHeader("Pragma", "no-cache");
+            post.addHeader("Cache-Control", "no-cache");
+            CloseableHttpResponse response = client.execute(post);
+            String rs = EntityUtils.toString(response.getEntity());
             response.close();
+            logger.debug(rs);
+            writeToFile(createTempFile(BILL_TYPE_ACCOUNTBALANCE), rs);
         } catch (Exception e) {
-            logger.error(e.getMessage(), e);
+            logger.error("获取余额信息", e);
         }
     }
 

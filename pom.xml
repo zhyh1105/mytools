@@ -2,9 +2,9 @@
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.puhui</groupId>
-	<artifactId>crawler</artifactId>
+	<artifactId>d-crawler</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>crawler</name>
+	<name>d-crawler</name>
 	<properties>
 		<springVersion>3.2.3.RELEASE</springVersion>
 		<jsp-api.version>2.2</jsp-api.version>

@@ -55,4 +55,30 @@ public class SSLUtils {
         }
         return null;
     }
+
+    public static SSLConnectionSocketFactory createSSLConnectionSocketFactory(String file) {
+        InputStream in = null;
+        KeyStore trustStore = null;
+        try {
+            trustStore = KeyStore.getInstance(KeyStore.getDefaultType());
+            in = SSLUtils.class.getResourceAsStream(file);
+            trustStore.load(in, "123456".toCharArray());
+            // Trust own CA and all self-signed certs
+            SSLContext sslcontext = SSLContexts.custom().loadTrustMaterial(trustStore, new TrustSelfSignedStrategy())
+                    .build();
+            // Allow TLSv1 protocol only
+            SSLConnectionSocketFactory sslsf = new SSLConnectionSocketFactory(sslcontext, new String[] { "TLSv1" },
+                    null, SSLConnectionSocketFactory.BROWSER_COMPATIBLE_HOSTNAME_VERIFIER);
+            return sslsf;
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                in.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return null;
+    }
 }

@@ -154,6 +154,8 @@ public class CT_BJ_MobileFetcher extends MobileFetcher {
             addvalue();
             hisBill();
             personalInfo();
+            address();
+            accountBalance();
         } finally {
             this.close();
         }
@@ -425,6 +427,20 @@ public class CT_BJ_MobileFetcher extends MobileFetcher {
     }
 
     @Override
+    protected void address() {
+        try {
+            String url = "http://www.189.cn/dqmh/userCenter/myOrderInfoList.do?method=mangeAddr&opt=init&rand="
+                    + System.currentTimeMillis();
+            HttpGet request = HttpUtils.get(url);
+            CloseableHttpResponse response = client.execute(request);
+            writeToFile(createTempFile(BILL_TYPE_ADDRESS), response.getEntity());
+            response.close();
+        } catch (Exception e) {
+            logger.error(e.getMessage(), e);
+        }
+    }
+
+    @Override
     protected void mzlog() {
 
     }
@@ -460,5 +476,21 @@ public class CT_BJ_MobileFetcher extends MobileFetcher {
     @Override
     protected void currFee() {
 
+    }
+
+    @Override
+    protected void accountBalance() {
+        logger.debug("获取余额信息");
+        try {
+            String url = "http://bj.189.cn/service/bill/balanceQuery.action";
+            Map<String, Object> params = new HashMap<>();
+            params.put("requestFlag", "asynchronism");
+            params.put("p1QueryFlag", "1");
+            params.put("shijian", System.currentTimeMillis());
+            String content = HttpUtils.executePostWithResult(client, url, params);
+            writeToFile(createTempFile(BILL_TYPE_ACCOUNTBALANCE), content);
+        } catch (Exception e) {
+            logger.error("获取余额信息失败", e);
+        }
     }
 }

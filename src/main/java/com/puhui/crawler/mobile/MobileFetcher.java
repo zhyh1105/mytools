@@ -33,6 +33,7 @@ import com.puhui.crawler.util.HttpUtils;
  */
 public abstract class MobileFetcher {
     public static final ExecutorService EXECUTOR_SERVICE = Executors.newCachedThreadPool();
+    protected boolean loadBillsSuccessfully = false;
     protected final List<Future<Boolean>> futures = new ArrayList<>();
     private static final Logger logger = Logger.getLogger(MobileFetcher.class);
     protected static final int PAGE_SIZE = NumberUtils.toInt(PropertiesUtil.getProps("mobile.bills.count.per.page"),
@@ -66,7 +67,8 @@ public abstract class MobileFetcher {
      */
     protected static final String BILL_TYPE_HISBILL = "hisbill", BILL_TYPE_GSM = "gsm", BILL_TYPE_SMS = "sms",
             BILL_TYPE_PERSONALINFO = "personalinfo", BILL_TYPE_MON = "mon", BILL_TYPE_GPRS = "gprs",
-            BILL_TYPE_RC = "rc", BILL_TYPE_CURRFEE = "currfee", BILL_TYPE_ADDVALUE = "addvalue";
+            BILL_TYPE_RC = "rc", BILL_TYPE_CURRFEE = "currfee", BILL_TYPE_ADDVALUE = "addvalue",
+            BILL_TYPE_ACCOUNTBALANCE = "accountBalance", BILL_TYPE_ADDRESS = "address";
     /**
      * 手機號
      * 
@@ -105,12 +107,14 @@ public abstract class MobileFetcher {
     private String area;
 
     /**
-     * 是否有登錄驗證碼
+     * 是否有登錄驗證碼 默认返回false
      * 
      * @author zhuyuhang
      * @return
      */
-    public abstract boolean hasCaptcha();
+    public boolean hasCaptcha() {
+        return false;
+    }
 
     /**
      * 是否含有二次图片验证码，即登录后获取随机短信之前
@@ -128,7 +132,9 @@ public abstract class MobileFetcher {
      * @author zhuyuhang
      * @return
      */
-    public abstract File loadCaptchaCode();
+    public File loadCaptchaCode() {
+        return null;
+    }
 
     /**
      * 二次图片验证码，即登录后获取随机短信之前
@@ -164,15 +170,17 @@ public abstract class MobileFetcher {
     }
 
     /**
-     * 驗證驗證碼
+     * 驗證驗證碼 默认返回false
      * 
      * @author zhuyuhang
      * @return
      */
-    public abstract boolean checkCaptchaCode(String captchaCode);
+    public boolean checkCaptchaCode(String captchaCode) {
+        return true;
+    }
 
     /**
-     * 二次图片验证
+     * 二次图片验证 默认返回true
      * 
      * @author zhuyuhang
      * @param captchaCode
@@ -204,7 +212,9 @@ public abstract class MobileFetcher {
      * @author zhuyuhang
      * @return
      */
-    public abstract boolean hasRandomcode();
+    public boolean hasRandomcode() {
+        return false;
+    }
 
     /**
      * 发送随机短信验证码
@@ -212,7 +222,9 @@ public abstract class MobileFetcher {
      * @author zhuyuhang
      * @return
      */
-    public abstract boolean sendRandombySms();
+    public boolean sendRandombySms() {
+        return false;
+    }
 
     /**
      * 验证随机短信验证码
@@ -221,15 +233,19 @@ public abstract class MobileFetcher {
      * @param randomCode
      * @return
      */
-    public abstract boolean validateRandomcode(String randomCode);
+    public boolean validateRandomcode(String randomCode) {
+        return false;
+    }
 
     /**
-     * 获取账单
+     * 获取账单 默认返回false
      * 
      * @author zhuyuhang
      * @return
      */
-    public abstract boolean loadBills();
+    public boolean loadBills() {
+        return false;
+    }
 
     protected File createTempFile(String type) {
         String billsDir = PropertiesUtil.getProps("mobile.bills.dir");
@@ -258,6 +274,12 @@ public abstract class MobileFetcher {
     protected String writeToFile(File file, HttpEntity entity) throws UnsupportedEncodingException, ParseException,
             IOException {
         String content = EntityUtils.toString(entity, HttpUtils.UTF_8);
+        FileUtils.write(file, content, HttpUtils.UTF_8);
+        return content;
+    }
+
+    protected String writeToFile(File file, String content) throws UnsupportedEncodingException, ParseException,
+            IOException {
         FileUtils.write(file, content, HttpUtils.UTF_8);
         return content;
     }
@@ -416,70 +438,98 @@ public abstract class MobileFetcher {
      * 
      * @author zhuyuhang
      */
-    protected abstract void personalInfo();
+    protected void personalInfo() {
+    }
 
     /**
      * 当前话费
      * 
      * @author zhuyuhang
      */
-    protected abstract void currFee();
+    protected void currFee() {
+    }
 
     /**
      * 历史账单
      * 
      * @author zhuyuhang
      */
-    protected abstract void hisBill();
+    protected void hisBill() {
+    }
 
     /**
      * 通话详单
      * 
      * @author zhuyuhang
      */
-    protected abstract void gsm();
+    protected void gsm() {
+    }
 
     /**
      * 短信详单
      * 
      * @author zhuyuhang
      */
-    protected abstract void sms();
+    protected void sms() {
+    }
 
     /**
      * 充值详单
      * 
      * @author zhuyuhang
      */
-    protected abstract void mzlog();
+    protected void mzlog() {
+    };
 
     /**
      * 增值详单
      * 
      * @author zhuyuhang
      */
-    protected abstract void addvalue();
+    protected void addvalue() {
+    }
 
     /**
      * 套餐及固定费
      * 
      * @author zhuyuhang
      */
-    protected abstract void rc();
+    protected void rc() {
+    }
 
     /**
      * 上网流量
      * 
      * @author zhuyuhang
      */
-    protected abstract void gprs();
+    protected void gprs() {
+    }
 
     /**
      * 代收费用
      * 
      * @author zhuyuhang
      */
-    protected abstract void mon();
+    protected void mon() {
+    }
+
+    /**
+     * 余额及欠费
+     * 
+     * @author zhuyuhang
+     */
+    protected void accountBalance() {
+
+    }
+
+    /**
+     * 收货地址
+     * 
+     * @author zhuyuhang
+     */
+    protected void address() {
+
+    }
 
     /**
      * 添加到线程
@@ -554,6 +604,20 @@ public abstract class MobileFetcher {
             @Override
             public Boolean call() throws Exception {
                 mon();
+                return true;
+            }
+        }));
+        futures.add(EXECUTOR_SERVICE.submit(new Callable<Boolean>() {
+            @Override
+            public Boolean call() throws Exception {
+                accountBalance();
+                return true;
+            }
+        }));
+        futures.add(EXECUTOR_SERVICE.submit(new Callable<Boolean>() {
+            @Override
+            public Boolean call() throws Exception {
+                address();
                 return true;
             }
         }));

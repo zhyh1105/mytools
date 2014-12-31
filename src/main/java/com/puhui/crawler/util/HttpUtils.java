@@ -50,16 +50,20 @@ public class HttpUtils {
     public static final String DEFAULT_USER_AGENT = "Mozilla/5.0 (Windows NT 6.3; WOW64; rv:32.0) Gecko/20100101 Firefox/33.0";
     public static final String UTF_8 = "UTF-8";
     public static final String GBK = "GBK";
-    // public static final HttpHost PROXY_FIDDLER = new HttpHost("127.0.0.1",
-    // 8888, "http");
-    public static final HttpHost PROXY_FREEGATE = new HttpHost("127.0.0.1", 8580, "http");
-    public static final HttpHost PROXY_NULL = new HttpHost("127.0.0.1", 8888, "http");
-    private static RequestConfig DEFAULT_REQUEST_CONFIG = RequestConfig.custom().setRedirectsEnabled(false)
-            .setRelativeRedirectsAllowed(false).setCookieSpec(CookieSpecs.BROWSER_COMPATIBILITY).build();
-    // public static RequestConfig DEFAULT_REQUEST_CONFIG =
-    // RequestConfig.custom().setProxy(PROXY_FIDDLER)
-    // .setRedirectsEnabled(false).setRelativeRedirectsAllowed(false).setCookieSpec(CookieSpecs.BEST_MATCH)
-    // .build();
+    public static final HttpHost PROXY_FIDDLER = new HttpHost("127.0.0.1", 8888, "http");
+    // public static final HttpHost PROXY_FREEGATE = new HttpHost("127.0.0.1",
+    // 8580, "http");
+    // public static final HttpHost PROXY_NULL = new HttpHost("127.0.0.1", 8888,
+    // "http");
+    private static RequestConfig DEFAULT_REQUEST_CONFIG = null;
+    private static RequestConfig.Builder builder = RequestConfig.custom();
+    static {
+        builder.setRedirectsEnabled(false).setRelativeRedirectsAllowed(false).setCookieSpec(CookieSpecs.BEST_MATCH)
+                .build();
+        // TODO 注意这句
+        builder.setProxy(PROXY_FIDDLER);
+        DEFAULT_REQUEST_CONFIG = builder.build();
+    }
     private static SSLContext sslContext = null;
     static {
         try {
@@ -93,9 +97,6 @@ public class HttpUtils {
             result.setEntity(buildParams(params));
         }
         RequestConfig.Builder builder = copyDefaultConfig();
-        if (proxy != null) {
-            // builder.setProxy(PROXY_FIDDLER);
-        }
         result.setConfig(builder.build());
         return result;
     }
@@ -222,6 +223,11 @@ public class HttpUtils {
 
     public static String executePostWithResult(CloseableHttpClient client, String url, Map<String, Object> params)
             throws ClientProtocolException, IOException {
+        return executePostWithResult(client, url, params, HttpUtils.UTF_8);
+    }
+
+    public static String executePostWithResult(CloseableHttpClient client, String url, Map<String, Object> params,
+            String charset) throws ClientProtocolException, IOException {
         HttpPost post = params == null ? post(url) : post(url, params);
         CloseableHttpResponse resp = client.execute(post);
         String result = EntityUtils.toString(resp.getEntity());

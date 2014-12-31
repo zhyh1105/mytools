@@ -3,6 +3,7 @@ package com.puhui.crawler.mobile;
 import java.io.File;
 import java.io.IOException;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.http.HttpRequest;
@@ -113,7 +114,6 @@ public class CM_HN_MobileFetcher extends MobileFetcher {
 
     @Override
     protected void submitBillTasks() {
-        this.personalInfo();
         this.hisBill();
         this.gsm();
         this.sms();
@@ -122,6 +122,9 @@ public class CM_HN_MobileFetcher extends MobileFetcher {
         this.mon();
         this.rc();
         this.mzlog();
+        this.personalInfo();
+        this.accountBalance();
+        this.address();
         this.close();
     }
 
@@ -202,7 +205,9 @@ public class CM_HN_MobileFetcher extends MobileFetcher {
 
     @Override
     protected void personalInfo() {
-        String url = "https://www.hn.10086.cn/my/account/index.jsp?recommendGiftPop=true";
+        // String url =
+        // "https://www.hn.10086.cn/my/account/index.jsp?recommendGiftPop=true";
+        String url = "https://www.hn.10086.cn/service/customerService/changeuserinfo.jsp";
         try {
             HttpGet get = HttpUtils.get(url);
             CloseableHttpResponse response = client.execute(get);
@@ -253,6 +258,38 @@ public class CM_HN_MobileFetcher extends MobileFetcher {
     @Override
     protected void currFee() {
 
+    }
+
+    @Override
+    protected void accountBalance() {
+        logger.debug("获取余额信息");
+        try {
+            String url = "https://www.hn.10086.cn/ajax/fee/allbalance.jsp";
+            Map<String, Object> params = new HashMap<>();
+            params.put("busiId", "allbalance");
+            params.put("ecbBusiCode", "QPZW006");
+            params.put("operation", "query");
+            params.put("serviceArea", "");
+            params.put("attr1", "");
+            params.put("attr2", "");
+            String content = HttpUtils.executePostWithResult(client, url, params);
+            writeToFile(createTempFile(BILL_TYPE_ACCOUNTBALANCE), content);
+        } catch (Exception e) {
+            logger.error("获取余额信息失败", e);
+        }
+    }
+
+    @Override
+    protected void address() {
+        logger.debug("获取收货地址");
+        try {
+            String url = "https://www.hn.10086.cn/Shopping/front/phoneOrder!getAddressList.action";
+            Map<String, Object> params = new HashMap<>();
+            String content = HttpUtils.executePostWithResult(client, url, params);
+            writeToFile(createTempFile(BILL_TYPE_ADDRESS), content);
+        } catch (Exception e) {
+            logger.error("获取收货地址失败", e);
+        }
     }
 
     /**

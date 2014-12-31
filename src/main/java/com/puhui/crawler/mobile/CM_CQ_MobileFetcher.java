@@ -14,7 +14,6 @@ import org.apache.http.client.CookieStore;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
-import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
 import org.apache.http.impl.client.BasicCookieStore;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.util.EntityUtils;
@@ -22,7 +21,6 @@ import org.apache.log4j.Logger;
 
 import com.puhui.crawler.util.DateUtils;
 import com.puhui.crawler.util.HttpUtils;
-import com.puhui.crawler.util.SSLUtils;
 
 /**
  * 重庆移动
@@ -32,18 +30,13 @@ import com.puhui.crawler.util.SSLUtils;
 public class CM_CQ_MobileFetcher extends MobileFetcher {
     private Logger logger = Logger.getLogger(CM_CQ_MobileFetcher.class);
     private CloseableHttpClient client;
-    private static String storePasswd = "123456";
     private static final String PATTERN_10086 = "yyyyMM";
     private CookieStore cookieStore = new BasicCookieStore();
     private Map<String, Object> form1Params = null;
     private static final String FORM1_SELECTOR = "#Form1";
 
-    private static SSLConnectionSocketFactory sscsf = SSLUtils.createSSLConnectionSocketFactory(
-            CM_HB_MobileFetcher.class.getResourceAsStream("/certs/service.cq.10086.cn.keystore"), storePasswd);
-
     public CM_CQ_MobileFetcher() {
         this.client = HttpUtils.getHttpClient(true, cookieStore);
-        // this.clientWithSSL = HttpUtils.getHttpClient(true, cookieStore);
     }
 
     @Override
@@ -60,7 +53,7 @@ public class CM_CQ_MobileFetcher extends MobileFetcher {
 
     private boolean go() {
         try {
-            return this.prepare() && this.login();
+            return this.login();
         } catch (Exception e) {
             logger.error(e.getMessage(), e);
         }
@@ -92,30 +85,55 @@ public class CM_CQ_MobileFetcher extends MobileFetcher {
      */
     public boolean login() {
         try {
-            String url = "https://service.cq.10086.cn/app?service=page/newLogin.login&listener=login";
+            // String url =
+            // "https://service.cq.10086.cn/app?service=page/newLogin.login&listener=login";
+            cookieStore.addCookie(HttpUtils.getCookie("WEBTRENDS_ID", "119.161.188.104-1419961399.112215", ".10086.cn",
+                    "/"));
+            cookieStore.addCookie(HttpUtils.getCookie("WT_FPC",
+                    "id=2b11f85519a1fbe82961419961391304:lv=1419961391317:ss=1419961391304", ".10086.cn", "/"));
+            String url = "http://service.cq.10086.cn/app?service=page/newLogin.login";
+            HttpUtils.executeGet(client, url);
+            url = "http://service.cq.10086.cn/app?service=page/SSOLogin&listener=login";
             Map<String, Object> params = new HashMap<>();
             params.put("service", "direct/1/newLogin.login/$Form");
-            params.put("Form0", "S0");
-            params.put("Form0", "Form0");
+            params.put("sp", "S0");
+            params.put("Form0", "blogin");
             params.put("USER_PASSWD_SELECT", "1");
             params.put("SERIAL_NUMBER", getPhone());
             // base64编码
             params.put("USER_PASSWD", Base64.encodeBase64String(getPassword().getBytes()));
-            params.put("USER_PASSSMS", null);
+            params.put("USER_PASSSMS", "");
             params.put("EFFICACY_CODE", getCaptchaCode());
             params.put("clogin", "on");
             HttpPost post = HttpUtils.post(url, params);
+            post.addHeader("Referer", "http://service.cq.10086.cn/app?service=page/newLogin.login");
+            post.addHeader("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
+            post.addHeader("Accept-Language", "en-US,en;q=0.5");
             CloseableHttpResponse response = client.execute(post);
             String responseString = EntityUtils.toString(response.getEntity());
             logger.debug(responseString);
-            url = HttpUtils.getHeader(response, "Location");
-            if (url == null) {
-                return false;
-            }
             response.close();
+            // post = HttpUtils.buildPostFromHtml(responseString,
+            // "#caloginForm");// https://cq.ac.10086.cn/SSO/loginbox
+            params = HttpUtils.buildHiddenInputParamsFromHtml(responseString, "#caloginForm");
+            url = "http://cq.ac.10086.cn/SSO/loginbox";
+            post = HttpUtils.post(url, params);
+            responseString = HttpUtils.executePostWithResult(client, post);
+            logger.debug(responseString);
+
+            post = HttpUtils.buildPostFromHtml(responseString, "#sso");// http://service.cq.10086.cn/CHOQ/authentication/authentication_return.jsp?timeStamp=1419960008006
+            responseString = HttpUtils.executePostWithResult(client, post);
+            logger.debug(responseString);
+
+            params = HttpUtils.buildHiddenInputParamsFromHtml(responseString);
+            url = "http://service.cq.10086.cn/app?service=page/Home&listener=getLoginInfo";
+            post = HttpUtils.post(url, params);
+            responseString = HttpUtils.executePostWithResult(client, post);
+
+            url = "http://service.cq.10086.cn/app";
             responseString = HttpUtils.executeGetWithResult(client, url);
             logger.debug(responseString);
-            return true;
+            return responseString.contains("CHOQ/authentication/authentication_logout.jsp");
         } catch (Exception e) {
             logger.error(e.getMessage(), e);
         }
@@ -128,14 +146,15 @@ public class CM_CQ_MobileFetcher extends MobileFetcher {
             // 二次登录确认
             this.loginSecondCheck();
             // 重庆移动只能线性请求 它有 token 验证
-            // super.submitBillTasks();
             gsm();
             sms();
             addvalue();
             rc();
             gprs();
             hisBill();
+            // 内含收货地址
             personalInfo();
+            accountBalance();
             this.close();
         } catch (Exception e) {
             logger.error(e.getMessage());
@@ -237,7 +256,7 @@ public class CM_CQ_MobileFetcher extends MobileFetcher {
 
     @Override
     protected void personalInfo() {
-        String url = "https://service.cq.10086.cn/app?service=page/operation.PersonalInfo&listener=initPage";
+        String url = "http://service.cq.10086.cn/app?service=page/operation.PersonalInfo&listener=initPage";
         try {
             HttpGet get = HttpUtils.get(url);
             CloseableHttpResponse response = client.execute(get);
@@ -292,6 +311,18 @@ public class CM_CQ_MobileFetcher extends MobileFetcher {
     @Override
     protected void currFee() {
 
+    }
+
+    @Override
+    protected void accountBalance() {
+        logger.debug("获取余额信息");
+        try {
+            String url = "http://service.cq.10086.cn/app?service=page/operation.myMobileIndex&listener=initPage";
+            String content = HttpUtils.executeGetWithResult(client, url);
+            writeToFile(createTempFile(BILL_TYPE_ACCOUNTBALANCE), content);
+        } catch (Exception e) {
+            logger.error("获取余额信息失败", e);
+        }
     }
 
     /**
@@ -350,8 +381,13 @@ public class CM_CQ_MobileFetcher extends MobileFetcher {
 
     @Override
     public File loadCaptchaCode() {
-        String url = "http://service.cq.10086.cn/icsimage?mode=validate&width=51&height=20&temp="
-                + System.currentTimeMillis();
+        // String url =
+        // "http://service.cq.10086.cn/icsimage?mode=validate&width=51&height=20&temp="
+        // + System.currentTimeMillis();
+        String url = "https://cq.ac.10086.cn/SSO/img?width=51&height=20&rand=" + Math.random();
+        // HttpGet get = HttpUtils.get(url);
+        // get.addHeader("Referer",
+        // "http://service.cq.10086.cn/app?service=page/newLogin.login");
         return getCaptchaCodeImage(client, url);
     }
 
@@ -367,7 +403,7 @@ public class CM_CQ_MobileFetcher extends MobileFetcher {
 
     @Override
     public boolean sendRandombySms() {
-        String url = "https://service.cq.10086.cn/app?service=page/myYD.OrderQuery&listener=initPage";
+        String url = "http://service.cq.10086.cn/app?service=page/myYD.OrderQuery&listener=initPage";
         try {
             HttpGet get = HttpUtils.get(url);
             get.setHeader("Referer",
@@ -376,7 +412,9 @@ public class CM_CQ_MobileFetcher extends MobileFetcher {
             url = HttpUtils.getHeader(response, "Location");
             logger.debug(url);
             response.close();
+            url = url.replaceFirst("https", "http");
             get = HttpUtils.get(url);
+            // https://service.cq.10086.cn/app?service=page/myYD.OrderQuery&listener=initPage
             String responeString = HttpUtils.executeGetWithResult(client, url);
             logger.debug(responeString);
             return true;

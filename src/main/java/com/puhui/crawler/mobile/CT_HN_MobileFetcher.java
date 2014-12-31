@@ -12,6 +12,7 @@ import org.apache.http.client.CookieStore;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.cookie.Cookie;
 import org.apache.http.impl.client.BasicCookieStore;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.util.EntityUtils;
@@ -30,11 +31,14 @@ import com.puhui.crawler.util.HttpUtils;
 public class CT_HN_MobileFetcher extends MobileFetcher {
     private Logger logger = Logger.getLogger(CT_HN_MobileFetcher.class);
     private CloseableHttpClient client;
+    private CloseableHttpClient client2;
     private static final String PATTERN_10086 = "yyyy-MM";
     private CookieStore cookieStore = new BasicCookieStore();
+    private CookieStore cookieStore2 = new BasicCookieStore();
 
     public CT_HN_MobileFetcher() {
         this.client = HttpUtils.getHttpClient(false, cookieStore);
+        this.client2 = HttpUtils.getHttpClient(false, cookieStore2);
     }
 
     @Override
@@ -92,6 +96,8 @@ public class CT_HN_MobileFetcher extends MobileFetcher {
         try {
             String url = "http://hn.189.cn/hnselfservice/uamlogin/uam-login!validataLogin.action";
             Map<String, Object> params = new HashMap<>();
+            // params.put("rUrl",
+            // "/hnselfservice/billquery/bill-query!showTabs.action?_z=1");
             params.put("logonPattern", "2");
             params.put("userType", "2000004");
             params.put("productId", getPhone());
@@ -138,7 +144,7 @@ public class CT_HN_MobileFetcher extends MobileFetcher {
             responseString = EntityUtils.toString(response.getEntity());
             response.close();
             logger.debug(responseString);
-            return true;
+            return responseString.contains("尊敬的中国电信客户") && responseString.contains("欢迎您登录网上营业厅");
         } catch (Exception e) {
             logger.error(e.getMessage(), e);
         }
@@ -190,13 +196,15 @@ public class CT_HN_MobileFetcher extends MobileFetcher {
     @Override
     public boolean loadBills() {
         try {
-            personalInfo();
             hisBill();
             gsm();
             sms();
             gprs();
             addvalue();
             rc();
+            personalInfo();
+            accountBalance();
+            address();
         } finally {
             this.close();
         }
@@ -425,6 +433,45 @@ public class CT_HN_MobileFetcher extends MobileFetcher {
             HttpGet get = HttpUtils.get(url);
             CloseableHttpResponse response = client.execute(get);
             writeToFile(createTempFile(BILL_TYPE_CURRFEE), response.getEntity());
+            response.close();
+        } catch (Exception e) {
+            logger.error(e.getMessage(), e);
+        }
+    }
+
+    @Override
+    protected void address() {
+        try {
+            copyCookie();
+            String url = "http://www.189.cn/dqmh/productOnLine.do?method=login";
+            HttpUtils.executeGet(client2, url);
+            url = "http://www.189.cn/dqmh/userCenter/myOrderInfoList.do?method=mangeAddr&opt=init&type=outlink";
+            HttpGet get = HttpUtils.get(url);
+            get.addHeader("Referer", "http://hn.189.cn/jsp/service/order/addressmanger.jsp");
+            CloseableHttpResponse response = client2.execute(get);
+            writeToFile(createTempFile(BILL_TYPE_ADDRESS), response.getEntity());
+            response.close();
+        } catch (Exception e) {
+            logger.error(e.getMessage(), e);
+        }
+    }
+
+    private void copyCookie() {
+        for (Cookie cookie : cookieStore.getCookies()) {
+            if (!cookie.getName().equals("JSESSIONID")) {
+                cookieStore2.addCookie(cookie);
+            }
+        }
+    }
+
+    @Override
+    protected void accountBalance() {
+        String url = "http://hn.189.cn/hnselfservice/billquery/bill-query!queryBanlance.action?tabIndex=3&accNbr="
+                + getPhone() + "&chargeType=10";
+        try {
+            HttpGet get = HttpUtils.get(url);
+            CloseableHttpResponse response = client.execute(get);
+            writeToFile(createTempFile(BILL_TYPE_ACCOUNTBALANCE), response.getEntity());
             response.close();
         } catch (Exception e) {
             logger.error(e.getMessage(), e);
